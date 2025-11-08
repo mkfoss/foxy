@@ -14,7 +14,7 @@ type HeaderDef struct {
 	RecordSize      uint16
 	Reserved1       [16]byte
 	TableFlags      uint8
-	CodePage        uint8
+	CodePage        Codepage
 	Reserved2       [2]byte
 }
 
