@@ -1,12 +1,25 @@
 package foxy
 
 import (
+	"io"
+	"os"
 	"path"
 	"runtime"
 	"testing"
 
+	"github.com/mkfoss/foxy/internal/mockfiler"
 	"github.com/stretchr/testify/assert"
 )
+
+type BytesOpener struct {
+	data []byte
+}
+
+func (bop *BytesOpener) OpenFile(name string, flag int, perm os.FileMode) (io.ReadSeekCloser, error) {
+	fl := mockfiler.NewMockFiler()
+	fl.Data = bop.data
+	return fl, nil
+}
 
 func PackageRoot(t *testing.T) string {
 	t.Helper()

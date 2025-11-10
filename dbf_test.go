@@ -13,23 +13,34 @@ import (
 func Test_DbfOpenHeader(t *testing.T) {
 
 	type testcase struct {
-		id        int
-		inputfile string
-		expected  map[string]any
-		err       string
+		id         int
+		inputfile  string
+		inputbytes []byte
+		expected   map[string]any
+		err        string
 	}
 
 	testcases := []testcase{
-		{1, "names.dbf", map[string]any{
+		{1, "names.dbf", nil, map[string]any{
 			"count": 3, "lastup": "2025-11-08", "recoff": 360, "recsz": 21, "cp": core.Codepage(0x00), "idx": false, "fpt": false,
 		}, ""},
+		{2, "names.dbf", []byte{0x30, 0x00}, map[string]any{
+			"count": 0, "lastup": time.Time{}, "recoff": 0, "recsz": 0, "cp": core.Codepage(0x00), "idx": false, "fpt": false,
+		}, "open with opener: read header failed"},
 	}
 
 	for _, tc := range testcases {
 		t.Run(fmt.Sprintf("DbfOpenHeader #%.2d", tc.id), func(t *testing.T) {
 
 			dbf := &Dbf{}
-			err := dbf.Open(path.Join(DataDir(t), tc.inputfile))
+			var err error
+			if tc.inputbytes != nil {
+				err = dbf.OpenWithOpener(tc.inputfile, &BytesOpener{
+					data: tc.inputbytes,
+				})
+			} else {
+				err = dbf.Open(path.Join(DataDir(t), tc.inputfile))
+			}
 			if tc.err != "" {
 				if err == nil {
 					t.Fatal("expected error but got nil")
