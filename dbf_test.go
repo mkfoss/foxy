@@ -27,6 +27,9 @@ func Test_DbfOpenHeader(t *testing.T) {
 		{2, "names.dbf", []byte{0x30, 0x00}, map[string]any{
 			"count": 0, "lastup": time.Time{}, "recoff": 0, "recsz": 0, "cp": core.Codepage(0x00), "idx": false, "fpt": false,
 		}, "open with opener: read header failed"},
+		{3, "fourfields.dbf", nil, map[string]any{
+			"count": 2, "lastup": "2025-11-11", "recoff": 424, "recsz": 33, "cp": core.Codepage(0x03), "idx": false, "fpt": false,
+		}, ""},
 	}
 
 	for _, tc := range testcases {
@@ -82,4 +85,70 @@ func Test_DbfOpenHeader(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_Fields(t *testing.T) {
+
+	type testcase struct {
+		id         int
+		inputfile  string
+		inputbytes []byte
+		expected   []*Field
+		err        string
+	}
+
+	testcases := []testcase{
+		{1, "names.dbf", nil, []*Field{
+			{"id", DTInteger, 0, 4, 0, true, false},
+			{"name", DTCharacter, 1, 16, 0, false, false},
+		}, ""},
+		{2, "fourfields.dbf", nil, []*Field{
+			{"int", DTInteger, 0, 4, 0, true, false},
+			{"char", DTCharacter, 1, 10, 0, false, false},
+			{"num", DTNumeric, 2, 10, 4, false, false},
+			{"float", DTCurrency, 3, 8, 4, true, false},
+		}, ""},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("Fields #%.2d", tc.id), func(t *testing.T) {
+			dbf := &Dbf{}
+			var err error
+			if tc.inputbytes != nil {
+				err = dbf.OpenWithOpener(tc.inputfile, &BytesOpener{
+					data: tc.inputbytes,
+				})
+			} else {
+				err = dbf.Open(path.Join(DataDir(t), tc.inputfile))
+			}
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+
+				if dbf.Fields == nil {
+					t.Fatal("dbf.Fields should not be nil")
+				}
+
+				assert.Equal(t, len(tc.expected), dbf.Fields.Count())
+				for i, fld := range tc.expected {
+					assert.Equal(t, fld, dbf.Fields.Field(i))
+					assert.Equal(t, fld, dbf.Fields.FieldByName(fld.Name()))
+				}
+
+				err := dbf.Close()
+				if err != nil {
+					t.Fatalf("unexpected error closing dbf: %s", err)
+				}
+
+				assert.Nil(t, dbf.Fields)
+			}
+		})
+	}
+
 }

@@ -20,6 +20,7 @@ type Dbf struct {
 	hasindex     bool
 	hasfpt       bool
 	codepage     core.Codepage
+	Fields       *Fields
 }
 
 func (dbf *Dbf) Open(name string) error {
@@ -60,10 +61,16 @@ func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 
 	//todo: sanity checking
 
+	flds := &Fields{}
+	if err = flds.Read(fl, dbf.recordoffset); err != nil {
+		return NewError("read fields failed").SetContext("open with opener").SetWrapped(err)
+	}
+
 	//these should be set after everything is initialized
 	dbf.opener = opener
 	dbf.fl = fl
 	dbf.filename = name
+	dbf.Fields = flds
 
 	return nil
 }
@@ -85,6 +92,10 @@ func (dbf *Dbf) Close() error {
 	dbf.hasindex = false
 	dbf.hasfpt = false
 	dbf.codepage = 0
+
+	dbf.Fields.fields = make([]*Field, 0)
+	dbf.Fields.fieldmap = make(map[string]int)
+	dbf.Fields = nil
 
 	return nil
 }
