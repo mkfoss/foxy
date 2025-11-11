@@ -6,5 +6,5 @@ type Record struct {
 
 func (rec *Record) Deleted() bool {
 
-	panic("not implemented")
+	return rec.data[0] == 0x2A
 }
