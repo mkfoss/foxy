@@ -43,3 +43,19 @@ func NewError(message string) Errorer {
 func NewErrorf(message string, args ...any) Errorer {
 	return NewError(fmt.Sprintf(message, args...))
 }
+
+func NewInactiveError() Errorer {
+	return &Error{message: "dbf is inactive, could not perform operation"}
+}
+
+func NewNavigationError() Errorer {
+	return &Error{message: "navigation error"}
+}
+
+func NewNavigationBofError() Errorer {
+	return &Error{message: "bof"}
+}
+
+func NewNavigationEofError() Errorer {
+	return &Error{message: "eof"}
+}

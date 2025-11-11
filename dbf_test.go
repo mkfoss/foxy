@@ -113,6 +113,7 @@ func Test_Fields(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(fmt.Sprintf("Fields #%.2d", tc.id), func(t *testing.T) {
 			dbf := &Dbf{}
+			assert.Nil(t, dbf.Record)
 			var err error
 			if tc.inputbytes != nil {
 				err = dbf.OpenWithOpener(tc.inputfile, &BytesOpener{
@@ -135,6 +136,12 @@ func Test_Fields(t *testing.T) {
 					t.Fatal("dbf.Fields should not be nil")
 				}
 
+				if dbf.Record == nil {
+					t.Fatal("dbf.Record should not be nil")
+				}
+
+				assert.Equal(t, len(dbf.Record.data), dbf.RecordSize())
+
 				assert.Equal(t, len(tc.expected), dbf.Fields.Count())
 				for i, fld := range tc.expected {
 					assert.Equal(t, fld, dbf.Fields.Field(i))
@@ -147,6 +154,7 @@ func Test_Fields(t *testing.T) {
 				}
 
 				assert.Nil(t, dbf.Fields)
+				assert.Nil(t, dbf.Record)
 			}
 		})
 	}

@@ -20,8 +20,11 @@ type Dbf struct {
 	hasindex     bool
 	hasfpt       bool
 	codepage     core.Codepage
+	rec          []byte
 
 	*Fields
+	*Record
+	Navigator
 }
 
 func (dbf *Dbf) Open(name string) error {
@@ -67,11 +70,20 @@ func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 		return NewError("read fields failed").SetContext("open with opener").SetWrapped(err)
 	}
 
+	dbf.Record = &Record{
+		data: make([]byte, dbf.recordsize),
+	}
+
 	//these should be set after everything is initialized
 	dbf.opener = opener
 	dbf.fl = fl
 	dbf.filename = name
 	dbf.Fields = flds
+
+	err = dbf.SetNavigator(&DefaulNavigator{})
+	if err != nil {
+		return NewError("set navigator failed").SetContext("open with opener").SetWrapped(err)
+	}
 
 	return nil
 }
@@ -97,6 +109,15 @@ func (dbf *Dbf) Close() error {
 	dbf.Fields.fields = make([]*Field, 0)
 	dbf.Fields.fieldmap = make(map[string]int)
 	dbf.Fields = nil
+
+	dbf.Record.data = make([]byte, 0)
+	dbf.Record = nil
+
+	err = dbf.Navigator.Finalize()
+	if err != nil {
+		return NewNavigationError().SetContext("dbf close, finalize navigator").SetWrapped(err)
+	}
+	dbf.Navigator = nil
 
 	return nil
 }
@@ -135,4 +156,37 @@ func (dbf *Dbf) Active() bool {
 
 func (dbf *Dbf) Filename() string {
 	return dbf.filename
+}
+
+func (dbf *Dbf) SetNavigator(navi Navigator) error {
+	if !dbf.Active() {
+		return NewInactiveError().SetContext("set navigator")
+	}
+
+	if dbf.Navigator != nil {
+		if err := dbf.Navigator.Finalize(); err != nil {
+			return NewError("navigator finalize failed").SetContext("set navigator").SetWrapped(err)
+		}
+	}
+
+	dbf.Navigator = navi
+	if err := dbf.Navigator.Initialize(dbf.fl, dbf.recordoffset, dbf.recordsize, dbf.recordcount, dbf.readFunc); err != nil {
+		return NewError("navigator initialize failed").SetContext("set navigator").SetWrapped(err)
+	}
+
+	if err := dbf.Navigator.First(); err != nil {
+		return NewNavigationError().SetContext("set navigator, first").SetWrapped(err)
+	}
+
+	return nil
+}
+
+func (dbf *Dbf) readFunc() error {
+	//assumed that reader offset is correct
+	_, err := dbf.fl.Read(dbf.Record.data)
+	if err != nil {
+		return NewErrorf("read record data failed").SetContext("read func").SetWrapped(err)
+	}
+
+	return nil
 }
