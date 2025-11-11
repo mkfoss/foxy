@@ -20,7 +20,8 @@ type Dbf struct {
 	hasindex     bool
 	hasfpt       bool
 	codepage     core.Codepage
-	Fields       *Fields
+
+	*Fields
 }
 
 func (dbf *Dbf) Open(name string) error {
