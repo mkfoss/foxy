@@ -23,7 +23,7 @@ type Dbf struct {
 	rec          []byte
 
 	*Fields
-	*Record
+	core.Record
 	Navigator
 }
 
@@ -75,9 +75,7 @@ func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 	}
 	dbf.Fields = flds
 
-	dbf.Record = &Record{
-		data: make([]byte, dbf.recordsize),
-	}
+	dbf.Record = make([]byte, dbf.recordsize)
 
 	err = dbf.SetNavigator(&DefaulNavigator{})
 	if err != nil {
@@ -109,7 +107,7 @@ func (dbf *Dbf) Close() error {
 	dbf.Fields.fieldmap = make(map[string]int)
 	dbf.Fields = nil
 
-	dbf.Record.data = make([]byte, 0)
+	dbf.Record = make([]byte, 0)
 	dbf.Record = nil
 
 	err = dbf.Navigator.Finalize()
@@ -182,7 +180,7 @@ func (dbf *Dbf) SetNavigator(navi Navigator) error {
 
 func (dbf *Dbf) readFunc() error {
 	//assumed that reader offset is correct
-	_, err := dbf.fl.Read(dbf.Record.data)
+	_, err := dbf.fl.Read(dbf.Record)
 	if err != nil {
 		return NewErrorf("read record data failed").SetContext("read func").SetWrapped(err)
 	}
