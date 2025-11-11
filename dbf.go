@@ -180,7 +180,7 @@ func (dbf *Dbf) SetNavigator(navi Navigator) error {
 
 func (dbf *Dbf) readFunc() error {
 	//assumed that reader offset is correct
-	_, err := dbf.fl.Read(dbf.Record)
+	err := dbf.Record.Read(dbf.fl)
 	if err != nil {
 		return NewErrorf("read record data failed").SetContext("read func").SetWrapped(err)
 	}
