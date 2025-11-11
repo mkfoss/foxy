@@ -99,14 +99,14 @@ func Test_Fields(t *testing.T) {
 
 	testcases := []testcase{
 		{1, "names.dbf", nil, []*Field{
-			{"id", DTInteger, 0, 4, 0, true, false},
-			{"name", DTCharacter, 1, 16, 0, false, false},
+			{nil, "id", DTInteger, 0, 4, 0, true, false},
+			{nil, "name", DTCharacter, 1, 16, 0, false, false},
 		}, ""},
 		{2, "fourfields.dbf", nil, []*Field{
-			{"int", DTInteger, 0, 4, 0, true, false},
-			{"char", DTCharacter, 1, 10, 0, false, false},
-			{"num", DTNumeric, 2, 10, 4, false, false},
-			{"float", DTCurrency, 3, 8, 4, true, false},
+			{nil, "int", DTInteger, 0, 4, 0, true, false},
+			{nil, "char", DTCharacter, 1, 10, 0, false, false},
+			{nil, "num", DTNumeric, 2, 10, 4, false, false},
+			{nil, "float", DTCurrency, 3, 8, 4, true, false},
 		}, ""},
 	}
 
@@ -144,6 +144,7 @@ func Test_Fields(t *testing.T) {
 
 				assert.Equal(t, len(tc.expected), dbf.Fields.Count())
 				for i, fld := range tc.expected {
+					fld.dbf = dbf
 					assert.Equal(t, fld, dbf.Fields.Field(i))
 					assert.Equal(t, fld, dbf.Fields.FieldByName(fld.Name()))
 				}

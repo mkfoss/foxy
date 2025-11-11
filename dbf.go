@@ -65,20 +65,19 @@ func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 
 	//todo: sanity checking
 
+	dbf.opener = opener
+	dbf.fl = fl
+	dbf.filename = name
+
 	flds := &Fields{}
-	if err = flds.Read(fl, dbf.recordoffset); err != nil {
+	if err = flds.Read(dbf); err != nil {
 		return NewError("read fields failed").SetContext("open with opener").SetWrapped(err)
 	}
+	dbf.Fields = flds
 
 	dbf.Record = &Record{
 		data: make([]byte, dbf.recordsize),
 	}
-
-	//these should be set after everything is initialized
-	dbf.opener = opener
-	dbf.fl = fl
-	dbf.filename = name
-	dbf.Fields = flds
 
 	err = dbf.SetNavigator(&DefaulNavigator{})
 	if err != nil {

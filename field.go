@@ -1,6 +1,7 @@
 package foxy
 
 type Field struct {
+	dbf      *Dbf
 	name     string
 	datatype DataType
 	index    int

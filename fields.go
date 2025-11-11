@@ -15,22 +15,23 @@ type Fields struct {
 }
 
 // Read reads the fields from the reader
-func (flds *Fields) Read(rdr io.ReadSeeker, dataoff int) error {
+func (flds *Fields) Read(dbf *Dbf) error {
 
-	_, err := rdr.Seek(32, io.SeekStart)
+	_, err := dbf.fl.Seek(32, io.SeekStart)
 	if err != nil {
 		return NewError("failed to seek start of field definitions").SetWrapped(err).SetContext("dbf fields read")
 	}
-	expectedflds := (dataoff - 296) / 32
+	expectedflds := (dbf.recordoffset - 296) / 32
 	//todo: sanity check
 	fields := make([]*Field, expectedflds)
 	fmap := make(map[string]int)
 	for i := range expectedflds {
-		def, err := core.ReadFieldDef(rdr)
+		def, err := core.ReadFieldDef(dbf.fl)
 		if err != nil {
 			return NewErrorf("failed to read field definition %d", i).SetWrapped(err).SetContext("dbf fields read")
 		}
 		fld := &Field{}
+		fld.dbf = dbf
 		fld.index = i
 		fld.datatype = DataTypeFromByte(def.FieldType)
 		fld.name = strings.ToLower(string(bytes.TrimRight(def.FieldName[:], " \x00\t\r\n")))
@@ -43,7 +44,7 @@ func (flds *Fields) Read(rdr io.ReadSeeker, dataoff int) error {
 	}
 
 	var b byte
-	err = binary.Read(rdr, binary.LittleEndian, &b)
+	err = binary.Read(dbf.fl, binary.LittleEndian, &b)
 	if err != nil {
 		return NewErrorf("failed to read end of fields marker").SetWrapped(err).SetContext("dbf fields read")
 	}
