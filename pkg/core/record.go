@@ -7,6 +7,10 @@ import (
 
 type Record []byte
 
+func NewRecord(size int) Record {
+	return Record(make([]byte, size))
+}
+
 func (rec Record) Deleted() bool {
 	return rec[0] == 0x2A
 }

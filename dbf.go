@@ -75,7 +75,7 @@ func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 	}
 	dbf.Fields = flds
 
-	dbf.Record = make([]byte, dbf.recordsize)
+	dbf.Record = core.NewRecord(dbf.recordsize)
 
 	err = dbf.SetNavigator(&DefaulNavigator{})
 	if err != nil {
