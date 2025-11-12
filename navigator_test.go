@@ -4,7 +4,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/mkfoss/foxy/pkg/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +42,7 @@ func Test_Navigation(t *testing.T) {
 	assert.True(t, dbf.IsLast())
 	assert.Equal(t, 10, dbf.Position())
 	assert.NoError(t, dbf.Goto(5))
-	assert.Equal(t, core.Record([]byte{0x20, 0x05, 0x00, 0x00, 0x00}), dbf.Record)
+	assert.Equal(t, []byte{0x20, 0x05, 0x00, 0x00, 0x00}, dbf.Record.Data())
 	assert.Equal(t, 5, dbf.Position())
 
 	err := dbf.Close()

@@ -140,7 +140,7 @@ func Test_Fields(t *testing.T) {
 					t.Fatal("dbf.Record should not be nil")
 				}
 
-				assert.Equal(t, len(dbf.Record), dbf.RecordSize())
+				assert.Equal(t, dbf.Record.Size(), dbf.RecordSize())
 
 				assert.Equal(t, len(tc.expected), dbf.Fields.Count())
 				for i, fld := range tc.expected {
