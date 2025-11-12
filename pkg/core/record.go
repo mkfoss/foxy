@@ -191,3 +191,47 @@ func (rec *Record) ReadLogical(start int) (bool, error) {
 		return false, fmt.Errorf("invalid logical value: 0x%X", b)
 	}
 }
+
+func (rec *Record) ReadMemo(start int, blockSize uint16, fpt io.ReadSeeker) ([]byte, bool, error) {
+	if err := rec.checkInRange(start, 4); err != nil {
+		return nil, false, err
+	}
+
+	// Read the block number (little-endian in the DBF field)
+	block := binary.LittleEndian.Uint32(rec.data[start : start+4])
+
+	// Block 0 means empty memo
+	if block == 0 {
+		return nil, false, nil
+	}
+
+	// Seek to the block position in the FPT file
+	// Position = blocknumber * blocksize
+	if _, err := fpt.Seek(int64(blockSize)*int64(block), io.SeekStart); err != nil {
+		return nil, false, fmt.Errorf("failed to seek in FPT file: %w", err)
+	}
+
+	// Read the memo block header (8 bytes)
+	// First 4 bytes: signature (big-endian) - 1 = text, 0 = binary
+	// Next 4 bytes: length (big-endian)
+	hbuf := make([]byte, 8)
+	if _, err := io.ReadFull(fpt, hbuf); err != nil {
+		return nil, false, fmt.Errorf("failed to read FPT block header: %w", err)
+	}
+
+	sign := binary.BigEndian.Uint32(hbuf[:4])
+	leng := binary.BigEndian.Uint32(hbuf[4:])
+
+	if leng == 0 {
+		// No data according to block header
+		return []byte{}, sign == 1, nil
+	}
+
+	// Read the actual memo data
+	buf := make([]byte, leng)
+	if _, err := io.ReadFull(fpt, buf); err != nil {
+		return buf, false, fmt.Errorf("failed to read FPT block data: %w", err)
+	}
+
+	return buf, sign == 1, nil
+}

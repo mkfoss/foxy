@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"testing"
 	"time"
@@ -342,6 +343,93 @@ func TestRecord_ReadLogical(t *testing.T) {
 					t.Fatalf("unexpected error: %s", err)
 				}
 				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}
+
+func TestRecord_ReadMemo(t *testing.T) {
+	type testcase struct {
+		id           int
+		input        []byte
+		start        int
+		blockSize    uint16
+		fptData      []byte
+		expectedData []byte
+		expectedText bool
+		err          string
+	}
+
+	// Helper to create FPT block data
+	createFptBlock := func(blockNum uint32, signature uint32, data []byte) []byte {
+		blockSize := uint16(64) // Standard block size
+		
+		// Calculate required size: enough blocks to hold header + data
+		neededBytes := int(blockNum)*int(blockSize) + 8 + len(data)
+		numBlocks := (neededBytes + int(blockSize) - 1) / int(blockSize)
+		fptData := make([]byte, numBlocks*int(blockSize))
+		
+		// Write block header at position blockNum * blockSize
+		offset := int(blockNum) * int(blockSize)
+		binary.BigEndian.PutUint32(fptData[offset:offset+4], signature)
+		binary.BigEndian.PutUint32(fptData[offset+4:offset+8], uint32(len(data)))
+		
+		// Write data after header
+		copy(fptData[offset+8:], data)
+		return fptData
+	}
+
+	testcases := []*testcase{
+		// Empty memo (block 0)
+		{1, []byte{0x20, 0x00, 0x00, 0x00, 0x00}, 1, 64, []byte{}, nil, false, ""},
+		
+		// Text memo at block 1
+		{2, []byte{0x20, 0x01, 0x00, 0x00, 0x00}, 1, 64,
+			createFptBlock(1, 1, []byte("Hello, World!")),
+			[]byte("Hello, World!"), true, ""},
+		
+		// Binary memo at block 2
+		{3, []byte{0x20, 0x02, 0x00, 0x00, 0x00}, 1, 64,
+			createFptBlock(2, 0, []byte{0x01, 0x02, 0x03, 0x04}),
+			[]byte{0x01, 0x02, 0x03, 0x04}, false, ""},
+		
+		// Text memo with larger content at block 5
+		{4, []byte{0x20, 0x05, 0x00, 0x00, 0x00}, 1, 64,
+			createFptBlock(5, 1, []byte("This is a longer memo field with more text content that spans multiple lines.\nLine 2\nLine 3")),
+			[]byte("This is a longer memo field with more text content that spans multiple lines.\nLine 2\nLine 3"), true, ""},
+		
+		// Empty data but non-zero block
+		{5, []byte{0x20, 0x03, 0x00, 0x00, 0x00}, 1, 64,
+			createFptBlock(3, 1, []byte{}),
+			[]byte{}, true, ""},
+		
+		// Out of range error
+		{6, []byte{0x20}, 1, 64, []byte{}, nil, false, "out of range"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadMemo %d", tc.id), func(t *testing.T) {
+			rec := NewRecord(len(tc.input), 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			
+			// Create mock FPT file
+			fpt := bytes.NewReader(tc.fptData)
+			
+			gotData, gotText, err := rec.ReadMemo(tc.start, tc.blockSize, fpt)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expectedData, gotData)
+				assert.Equal(t, tc.expectedText, gotText)
 			}
 		})
 	}
