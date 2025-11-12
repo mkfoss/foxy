@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -127,6 +128,47 @@ func TestRecord_ReadNumeric(t *testing.T) {
 					t.Fatal("expected error, got nil")
 				}
 				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}
+
+func TestRecord_ReadDate(t *testing.T) {
+	type testcase struct {
+		id       int
+		input    []byte
+		start    int
+		expected time.Time
+		err      string
+	}
+
+	testcases := []*testcase{
+		{1, []byte(" 20250606"), 1, time.Date(2025, time.Month(6), 6, 0, 0, 0, 0, time.UTC), ""},
+		{2, []byte(" 20251306"), 1, time.Time{}, "month out of range"},
+		{3, []byte(" 20251232"), 1, time.Time{}, "day out of range"},
+		{4, []byte("         "), 1, time.Time{}, "cannot parse"},
+		{5, []byte("\x77ABC         "), 1, time.Time{}, "cannot parse"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadDate %d", tc.id), func(t *testing.T) {
+			rec := NewRecord(9, 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			got, err := rec.ReadDate(1)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+				assert.True(t, got.IsZero())
 			} else {
 				if err != nil {
 					t.Fatalf("unexpected error: %s", err)

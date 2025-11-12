@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 
 	"golang.org/x/text/encoding"
 )
@@ -94,4 +95,8 @@ func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
 
 func (rec *Record) ReadFloat(start, length, decimals int) (float64, error) {
 	return rec.ReadNumeric(start, length, decimals)
+}
+
+func (rec *Record) ReadDate(start int) (time.Time, error) {
+	return time.Parse("20060102", string(rec.data[start:start+8]))
 }
