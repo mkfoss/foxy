@@ -217,3 +217,132 @@ func TestRecord_ReadDateTime(t *testing.T) {
 		})
 	}
 }
+
+func TestRecord_ReadInteger(t *testing.T) {
+	type testcase struct {
+		id       int
+		input    []byte
+		start    int
+		expected int32
+		err      string
+	}
+
+	testcases := []*testcase{
+		{1, []byte{0x20, 0x01, 0x00, 0x00, 0x00}, 1, 1, ""},
+		{2, []byte{0x20, 0xFF, 0xFF, 0xFF, 0xFF}, 1, -1, ""},
+		{3, []byte{0x20, 0x00, 0x00, 0x00, 0x00}, 1, 0, ""},
+		{4, []byte{0x20, 0x39, 0x30, 0x00, 0x00}, 1, 12345, ""},
+		{5, []byte{0x20, 0xC7, 0xCF, 0xFF, 0xFF}, 1, -12345, ""},
+		{6, []byte{0x20}, 1, 0, "out of range"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadInteger %d", tc.id), func(t *testing.T) {
+			rec := NewRecord(len(tc.input), 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			got, err := rec.ReadInteger(tc.start)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}
+
+func TestRecord_ReadDouble(t *testing.T) {
+	type testcase struct {
+		id       int
+		input    []byte
+		start    int
+		expected float64
+		err      string
+	}
+
+	testcases := []*testcase{
+		{1, []byte{0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, 1, 0.0, ""},
+		{2, []byte{0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F}, 1, 1.0, ""},
+		{3, []byte{0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0xBF}, 1, -1.0, ""},
+		{4, []byte{0x20, 0x77, 0xBE, 0x9F, 0x1A, 0x2F, 0xDD, 0x5E, 0x40}, 1, 123.456, ""},
+		{5, []byte{0x20, 0x77, 0xBE, 0x9F, 0x1A, 0x2F, 0xDD, 0x5E, 0xC0}, 1, -123.456, ""},
+		{6, []byte{0x20}, 1, 0, "out of range"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadDouble %d", tc.id), func(t *testing.T) {
+			rec := NewRecord(len(tc.input), 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			got, err := rec.ReadDouble(tc.start)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}
+
+func TestRecord_ReadLogical(t *testing.T) {
+	type testcase struct {
+		id       int
+		input    []byte
+		start    int
+		expected bool
+		err      string
+	}
+
+	testcases := []*testcase{
+		{1, []byte{0x20, 0x54}, 1, true, ""},
+		{2, []byte{0x20, 0x74}, 1, true, ""},
+		{3, []byte{0x20, 0x59}, 1, true, ""},
+		{4, []byte{0x20, 0x79}, 1, true, ""},
+		{5, []byte{0x20, 0x46}, 1, false, ""},
+		{6, []byte{0x20, 0x66}, 1, false, ""},
+		{7, []byte{0x20, 0x4E}, 1, false, ""},
+		{8, []byte{0x20, 0x6E}, 1, false, ""},
+		{9, []byte{0x20, 0x3F}, 1, false, ""},
+		{10, []byte{0x20, 0x20}, 1, false, ""},
+		{11, []byte{0x20, 0x58}, 1, false, "invalid logical value"},
+		{12, []byte{0x20}, 1, false, "out of range"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadLogical %d", tc.id), func(t *testing.T) {
+			rec := NewRecord(len(tc.input), 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			got, err := rec.ReadLogical(tc.start)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}

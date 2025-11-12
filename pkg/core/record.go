@@ -141,3 +141,53 @@ func (rec *Record) ReadDateTime(start int) (time.Time, error) {
 	// create time using ymd and nanosecond timestamp
 	return time.Date(y, time.Month(m), d, 0, 0, int(nSec), int(mSec)*int(time.Millisecond), time.UTC), nil
 }
+
+func (rec *Record) ReadInteger(start int) (int32, error) {
+	if err := rec.checkInRange(start, 4); err != nil {
+		return 0, err
+	}
+
+	var i int32
+	n, err := binary.Decode(rec.data[start:start+4], binary.LittleEndian, &i)
+	if err != nil {
+		return 0, err
+	}
+	if n != 4 {
+		return 0, fmt.Errorf("invalid integer length: %d", n)
+	}
+
+	return i, nil
+}
+
+func (rec *Record) ReadDouble(start int) (float64, error) {
+	if err := rec.checkInRange(start, 8); err != nil {
+		return 0, err
+	}
+
+	var d float64
+	n, err := binary.Decode(rec.data[start:start+8], binary.LittleEndian, &d)
+	if err != nil {
+		return 0, err
+	}
+	if n != 8 {
+		return 0, fmt.Errorf("invalid double length: %d", n)
+	}
+
+	return d, nil
+}
+
+func (rec *Record) ReadLogical(start int) (bool, error) {
+	if err := rec.checkInRange(start, 1); err != nil {
+		return false, err
+	}
+
+	b := rec.data[start]
+	switch b {
+	case 'T', 't', 'Y', 'y':
+		return true, nil
+	case 'F', 'f', 'N', 'n', '?', ' ':
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid logical value: 0x%X", b)
+	}
+}
