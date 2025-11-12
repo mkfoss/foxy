@@ -178,3 +178,42 @@ func TestRecord_ReadDate(t *testing.T) {
 		})
 	}
 }
+
+func TestRecord_ReadDateTime(t *testing.T) {
+	type testcase struct {
+		id       int
+		input    []byte
+		start    int
+		expected time.Time
+		err      string
+	}
+
+	testcases := []*testcase{
+		{1, []byte{0x20, 0x3E, 0x8D, 0x25, 0x00, 0x00, 0x00, 0x00, 0x00}, 1,
+			time.Date(2025, time.Month(11), 10, 0, 0, 0, 0, time.UTC), ""},
+		{2, []byte{0x20, 0x77, 0x07, 0x25, 0x00, 0x20, 0x08, 0x4D, 0x03}, 1,
+			time.Date(1932, time.Month(2), 5, 15, 23, 0, 0, time.UTC), ""},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadDateTime %d", tc.id), func(t *testing.T) {
+			rec := NewRecord(9, 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			got, err := rec.ReadDateTime(1)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}

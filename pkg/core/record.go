@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/mkfoss/foxy/pkg/julian"
 	"golang.org/x/text/encoding"
 )
 
@@ -85,7 +86,6 @@ func (rec *Record) ReadCurrency(start int) (float64, error) {
 }
 
 func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
-	// N values are stored as string values, if no decimals return as int64, if decimals treat as float64
 	trimmed := bytes.Trim(rec.data, " ")
 	if len(trimmed) == 0 {
 		return 0.0, nil
@@ -99,4 +99,27 @@ func (rec *Record) ReadFloat(start, length, decimals int) (float64, error) {
 
 func (rec *Record) ReadDate(start int) (time.Time, error) {
 	return time.Parse("20060102", string(rec.data[start:start+8]))
+}
+
+func (rec *Record) ReadDateTime(start int) (time.Time, error) {
+
+	var julDat uint32
+	var mSec uint32
+	if _, err := binary.Decode(rec.data[start:start+4], binary.LittleEndian, &julDat); err != nil {
+		return time.Time{}, err
+	}
+	if _, err := binary.Decode(rec.data[start+4:start+8], binary.LittleEndian, &mSec); err != nil {
+		return time.Time{}, err
+	}
+	// determine year, month, day
+	y, m, d := julian.YMD(julDat)
+	if y < 0 || y > 9999 {
+		//todo: some dbf files seem to contain invalid dates, not sure if we want treat this an error until I know what is going on
+		return time.Time{}, fmt.Errorf("time data invalid")
+	}
+	// calculate whole seconds and use the remainder as nanosecond resolution
+	nSec := mSec / 1000
+	mSec = mSec - (nSec * 1000)
+	// create time using ymd and nanosecond timestamp
+	return time.Date(y, time.Month(m), d, 0, 0, int(nSec), int(mSec)*int(time.Millisecond), time.UTC), nil
 }
