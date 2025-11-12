@@ -91,3 +91,7 @@ func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
 	}
 	return strconv.ParseFloat(string(trimmed), 64)
 }
+
+func (rec *Record) ReadFloat(start, length, decimals int) (float64, error) {
+	return rec.ReadNumeric(start, length, decimals)
+}
