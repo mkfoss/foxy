@@ -42,9 +42,16 @@ func (rec *Record) Data() []byte {
 	return rec.data
 }
 
+func (rec *Record) checkInRange(start, length int) error {
+	if start+length > len(rec.data) {
+		return fmt.Errorf("out of range")
+	}
+	return nil
+}
+
 func (rec *Record) ReadString(start, length int, trim, decode bool) (string, error) {
-	if start+length >= len(rec.data) {
-		return "", fmt.Errorf("out of range")
+	if err := rec.checkInRange(start, length); err != nil {
+		return "", err
 	}
 	bts := rec.data[start : start+length]
 	if trim {
@@ -72,6 +79,9 @@ func (rec *Record) ReadString(start, length int, trim, decode bool) (string, err
 }
 
 func (rec *Record) ReadCurrency(start int) (float64, error) {
+	if err := rec.checkInRange(start, 8); err != nil {
+		return 0, err
+	}
 
 	var i int64
 	n, err := binary.Decode(rec.data[start:start+8], binary.LittleEndian, &i)
@@ -86,6 +96,9 @@ func (rec *Record) ReadCurrency(start int) (float64, error) {
 }
 
 func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
+	if err := rec.checkInRange(start, length); err != nil {
+		return 0, err
+	}
 	trimmed := bytes.Trim(rec.data, " ")
 	if len(trimmed) == 0 {
 		return 0.0, nil
@@ -98,11 +111,16 @@ func (rec *Record) ReadFloat(start, length, decimals int) (float64, error) {
 }
 
 func (rec *Record) ReadDate(start int) (time.Time, error) {
+	if err := rec.checkInRange(start, 8); err != nil {
+		return time.Time{}, err
+	}
 	return time.Parse("20060102", string(rec.data[start:start+8]))
 }
 
 func (rec *Record) ReadDateTime(start int) (time.Time, error) {
-
+	if err := rec.checkInRange(start, 8); err != nil {
+		return time.Time{}, err
+	}
 	var julDat uint32
 	var mSec uint32
 	if _, err := binary.Decode(rec.data[start:start+4], binary.LittleEndian, &julDat); err != nil {
