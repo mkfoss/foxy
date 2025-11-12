@@ -99,14 +99,14 @@ func Test_Fields(t *testing.T) {
 
 	testcases := []testcase{
 		{1, "names.dbf", nil, []*Field{
-			{nil, "id", DTInteger, 0, 4, 0, true, false},
-			{nil, "name", DTCharacter, 1, 16, 0, false, false},
+			{nil, "id", core.DTInteger, 0, 4, 0, true, false},
+			{nil, "name", core.DTCharacter, 1, 16, 0, false, false},
 		}, ""},
 		{2, "fourfields.dbf", nil, []*Field{
-			{nil, "int", DTInteger, 0, 4, 0, true, false},
-			{nil, "char", DTCharacter, 1, 10, 0, false, false},
-			{nil, "num", DTNumeric, 2, 10, 4, false, false},
-			{nil, "float", DTCurrency, 3, 8, 4, true, false},
+			{nil, "int", core.DTInteger, 0, 4, 0, true, false},
+			{nil, "char", core.DTCharacter, 1, 10, 0, false, false},
+			{nil, "num", core.DTNumeric, 2, 10, 4, false, false},
+			{nil, "float", core.DTCurrency, 3, 8, 4, true, false},
 		}, ""},
 	}
 

@@ -57,3 +57,41 @@ func Test_RecordReadstring(t *testing.T) {
 		})
 	}
 }
+
+func Test_RecordReadCurrency(t *testing.T) {
+
+	type testcase struct {
+		id       int
+		input    []byte
+		expected float64
+		err      string
+	}
+
+	testcases := []*testcase{
+		{1, []byte{0x20, 0x80, 0xD6, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00}, 123.456, ""},
+		{2, []byte{0x20, 0x04, 0x77, 0xDA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, -245.99, ""},
+		{3, []byte{0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, 0, ""},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadCurrency %.2d", tc.id), func(t *testing.T) {
+			rec := NewRecord(9, 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			got, err := rec.ReadCurrency(1)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}

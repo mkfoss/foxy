@@ -1,9 +1,11 @@
 package foxy
 
+import "github.com/mkfoss/foxy/pkg/core"
+
 type Field struct {
 	dbf      *Dbf
 	name     string
-	datatype DataType
+	datatype core.DataType
 	index    int
 	size     int
 	decimals int
@@ -15,7 +17,7 @@ func (fld *Field) Name() string {
 	return fld.name
 }
 
-func (fld *Field) DataType() DataType {
+func (fld *Field) DataType() core.DataType {
 	return fld.datatype
 }
 

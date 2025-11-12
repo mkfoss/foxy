@@ -1,4 +1,4 @@
-package foxy
+package core
 
 import "bytes"
 

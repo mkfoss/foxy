@@ -67,3 +67,17 @@ func (rec *Record) ReadString(start, length int, trim, decode bool) (string, err
 
 	return string(bts), nil
 }
+
+func (rec *Record) ReadCurrency(start int) (float64, error) {
+
+	var i int64
+	n, err := binary.Decode(rec.data[start:start+8], binary.LittleEndian, &i)
+	if err != nil {
+		return 0, err
+	}
+	if n != 8 {
+		return 0, fmt.Errorf("invalid currency length: %d", n)
+	}
+
+	return float64(i) / 10000.00, nil
+}

@@ -33,7 +33,7 @@ func (flds *Fields) Read(dbf *Dbf) error {
 		fld := &Field{}
 		fld.dbf = dbf
 		fld.index = i
-		fld.datatype = DataTypeFromByte(def.FieldType)
+		fld.datatype = core.DataTypeFromByte(def.FieldType)
 		fld.name = strings.ToLower(string(bytes.TrimRight(def.FieldName[:], " \x00\t\r\n")))
 		fld.size = int(def.Length)
 		fld.decimals = int(def.Decimals)
