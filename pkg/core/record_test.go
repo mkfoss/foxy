@@ -95,3 +95,44 @@ func Test_RecordReadCurrency(t *testing.T) {
 		})
 	}
 }
+
+func TestRecord_ReadNumeric(t *testing.T) {
+	type testcase struct {
+		id       int
+		input    []byte
+		start    int
+		length   int
+		dec      int
+		expected float64
+		err      string
+	}
+
+	testcases := []*testcase{
+		{1, []byte{0x20, 0x31, 0x32, 0x33, 0x2E, 0x31, 0x35, 0x36, 0x20}, 1, 8, 3, 123.156, ""},
+		{2, []byte{0x20, 0x20, 0x20, 0x20, 0x30, 0x2E, 0x30, 0x30, 0x30}, 1, 8, 3, 0, ""},
+		{3, []byte{0x20, 0x2D, 0x31, 0x32, 0x33, 0x2E, 0x34, 0x35, 0x36}, 1, 8, 3, -123.456, ""},
+		{4, []byte{0x20, 0x20, 0x31, 0x32, 0x33, 0x2E, 0x34, 0x35, 0x37}, 1, 8, 3, 123.457, ""},
+	}
+
+	for _, tc := range testcases {
+		t.Run(fmt.Sprintf("ReadNumeric %d", tc.id), func(t *testing.T) {
+			rec := NewRecord(9, 0x03)
+			err := rec.LoadData(bytes.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("unexpected load error: %s", err)
+			}
+			got, err := rec.ReadNumeric(1, tc.length, tc.dec)
+			if tc.err != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				assert.ErrorContains(t, err, tc.err)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tc.expected, got)
+			}
+		})
+	}
+}

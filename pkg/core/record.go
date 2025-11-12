@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strconv"
 
 	"golang.org/x/text/encoding"
 )
@@ -80,4 +81,13 @@ func (rec *Record) ReadCurrency(start int) (float64, error) {
 	}
 
 	return float64(i) / 10000.00, nil
+}
+
+func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
+	// N values are stored as string values, if no decimals return as int64, if decimals treat as float64
+	trimmed := bytes.Trim(rec.data, " ")
+	if len(trimmed) == 0 {
+		return 0.0, nil
+	}
+	return strconv.ParseFloat(string(trimmed), 64)
 }
