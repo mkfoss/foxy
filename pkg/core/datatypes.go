@@ -16,11 +16,9 @@ const (
 	DTInteger
 	DTLogical
 	DTMemo
-	DTGeneral
-	DTPicture
 )
 
-var supportedfieldtypes = []byte("CYNFDTBILMGP")
+var supportedfieldtypes = []byte("CYNFDTBILM")
 
 func (f DataType) String() string {
 	if f < 1 || int(f) > len(supportedfieldtypes) {
