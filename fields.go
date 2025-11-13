@@ -35,6 +35,7 @@ func (flds *Fields) Read(dbf *Dbf) error {
 		fld.index = i
 		fld.datatype = core.DataTypeFromByte(def.FieldType)
 		fld.name = strings.ToLower(string(bytes.TrimRight(def.FieldName[:], " \x00\t\r\n")))
+		fld.offset = int(def.Offset)
 		fld.size = int(def.Length)
 		fld.decimals = int(def.Decimals)
 		fld.nullable = def.Flags&0x02 == 0x02

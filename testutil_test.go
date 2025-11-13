@@ -31,12 +31,12 @@ func PackageRoot(t *testing.T) string {
 	return ""
 }
 
-func DataDir(t *testing.T) string {
+func TesrDataDir(t *testing.T) string {
 	t.Helper()
 	return path.Join(PackageRoot(t), "testdata")
 }
 
 func Test_CauseIAmStupidlyParanoidandSometimesDontTrustTheDocsandCommonSenseandamCompulsive(t *testing.T) {
 	assert.NotEmpty(t, PackageRoot(t))
-	assert.NotEmpty(t, DataDir(t))
+	assert.NotEmpty(t, TesrDataDir(t))
 }

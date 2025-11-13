@@ -12,7 +12,7 @@ func Test_Navigation(t *testing.T) {
 
 	assert.ErrorContains(t, dbf.SetNavigator(&DefaulNavigator{}), "set navigator: dbf is inactive, could not perform operation")
 
-	if err := dbf.Open(path.Join(DataDir(t), "basicnav.dbf")); err != nil {
+	if err := dbf.Open(path.Join(TesrDataDir(t), "basicnav.dbf")); err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 

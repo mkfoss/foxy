@@ -42,7 +42,7 @@ func Test_DbfOpenHeader(t *testing.T) {
 					data: tc.inputbytes,
 				})
 			} else {
-				err = dbf.Open(path.Join(DataDir(t), tc.inputfile))
+				err = dbf.Open(path.Join(TesrDataDir(t), tc.inputfile))
 			}
 			if tc.err != "" {
 				if err == nil {
@@ -99,14 +99,14 @@ func Test_Fields(t *testing.T) {
 
 	testcases := []testcase{
 		{1, "names.dbf", nil, []*Field{
-			{nil, "id", core.DTInteger, 0, 4, 0, true, false},
-			{nil, "name", core.DTCharacter, 1, 16, 0, false, false},
+			{nil, "id", core.DTInteger, 0, 1, 4, 0, true, false},
+			{nil, "name", core.DTCharacter, 1, 5, 16, 0, false, false},
 		}, ""},
 		{2, "fourfields.dbf", nil, []*Field{
-			{nil, "int", core.DTInteger, 0, 4, 0, true, false},
-			{nil, "char", core.DTCharacter, 1, 10, 0, false, false},
-			{nil, "num", core.DTNumeric, 2, 10, 4, false, false},
-			{nil, "float", core.DTCurrency, 3, 8, 4, true, false},
+			{nil, "int", core.DTInteger, 0, 1, 4, 0, true, false},
+			{nil, "char", core.DTCharacter, 1, 5, 10, 0, false, false},
+			{nil, "num", core.DTNumeric, 2, 15, 10, 4, false, false},
+			{nil, "float", core.DTCurrency, 3, 25, 8, 4, true, false},
 		}, ""},
 	}
 
@@ -120,7 +120,7 @@ func Test_Fields(t *testing.T) {
 					data: tc.inputbytes,
 				})
 			} else {
-				err = dbf.Open(path.Join(DataDir(t), tc.inputfile))
+				err = dbf.Open(path.Join(TesrDataDir(t), tc.inputfile))
 			}
 			if tc.err != "" {
 				if err == nil {

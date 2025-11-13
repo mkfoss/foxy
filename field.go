@@ -7,6 +7,7 @@ type Field struct {
 	name     string
 	datatype core.DataType
 	index    int
+	offset   int
 	size     int
 	decimals int
 	binary   bool
@@ -39,4 +40,8 @@ func (fld *Field) Binary() bool {
 
 func (fld *Field) Nullable() bool {
 	return fld.nullable
+}
+
+func (fld *Field) Offset() int {
+	return fld.offset
 }
