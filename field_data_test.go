@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mkfoss/foxy/pkg/core"
 	"github.com/stretchr/testify/assert"
@@ -23,8 +24,9 @@ func Test_ReadValue(t *testing.T) {
 	}
 
 	testcases := []testcase{
-		//{1, "names.dbf", "names.csv", ""},
+		{1, "names.dbf", "names.csv", ""},
 		{2, "floats.dbf", "floats.csv", ""},
+		{3, "dates.dbf", "dates.csv", ""},
 	}
 
 	for _, tc := range testcases {
@@ -76,6 +78,18 @@ func Test_ReadValue(t *testing.T) {
 						}
 						assert.Equal(t, val, dval)
 						break
+					case core.DTDate:
+						val, err := time.Parse("20060102", cfld)
+						if err != nil {
+							t.Fatalf("unexpected error: %s", err)
+						}
+						assert.Equal(t, dfld.MustValue(), val)
+					case core.DTDateTime:
+						val, err := time.Parse("2006010215:04:05", cfld)
+						if err != nil {
+							t.Fatalf("unexpected error: %s", err)
+						}
+						assert.Equal(t, dfld.MustValue(), val)
 					default:
 						t.Fatalf("unexpected datatype: %d", dfld.datatype)
 					}
