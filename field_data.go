@@ -17,6 +17,24 @@ func (fld *Field) Value() (any, error) {
 			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read value")
 		}
 		return val, nil
+	case core.DTNumeric, core.DTFloat:
+		val, err := fld.dbf.Record.ReadNumeric(fld.offset, fld.size, fld.decimals)
+		if err != nil {
+			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read value")
+		}
+		return val, nil
+	case core.DTDouble:
+		val, err := fld.dbf.Record.ReadDouble(fld.offset)
+		if err != nil {
+			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read value")
+		}
+		return val, nil
+	case core.DTCurrency:
+		val, err := fld.dbf.Record.ReadCurrency(fld.offset)
+		if err != nil {
+			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read value")
+		}
+		return val, nil
 	default:
 		return nil, NewErrorf("unknown data type %d", fld.datatype)
 	}

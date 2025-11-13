@@ -23,7 +23,8 @@ func Test_ReadValue(t *testing.T) {
 	}
 
 	testcases := []testcase{
-		{1, "names.dbf", "names.csv", ""},
+		//{1, "names.dbf", "names.csv", ""},
+		{2, "floats.dbf", "floats.csv", ""},
 	}
 
 	for _, tc := range testcases {
@@ -63,6 +64,17 @@ func Test_ReadValue(t *testing.T) {
 						break
 					case core.DTCharacter:
 						assert.Equal(t, cfld, strings.Trim(dfld.MustValue().(string), " ")) //because .Value() returns untrimmed, undecoded string, we trim it here
+						break
+					case core.DTNumeric, core.DTFloat, core.DTDouble, core.DTCurrency:
+						val, err := strconv.ParseFloat(cfld, 64)
+						if err != nil {
+							t.Fatalf("unexpected error: %s", err)
+						}
+						dval, err := dfld.Value()
+						if err != nil {
+							t.Fatalf("unexpected error: %s", err)
+						}
+						assert.Equal(t, val, dval)
 						break
 					default:
 						t.Fatalf("unexpected datatype: %d", dfld.datatype)

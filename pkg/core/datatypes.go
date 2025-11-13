@@ -21,6 +21,7 @@ const (
 var supportedfieldtypes = []byte("CYNFDTBILM")
 
 func (f DataType) String() string {
+
 	if f < 1 || int(f) > len(supportedfieldtypes) {
 		return "unknown"
 	}

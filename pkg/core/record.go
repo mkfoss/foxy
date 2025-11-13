@@ -99,7 +99,7 @@ func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
 	if err := rec.checkInRange(start, length); err != nil {
 		return 0, err
 	}
-	trimmed := bytes.Trim(rec.data, " ")
+	trimmed := bytes.Trim(rec.data[start:start+length], " ")
 	if len(trimmed) == 0 {
 		return 0.0, nil
 	}
