@@ -47,6 +47,26 @@ func (fld *Field) Value() (any, error) {
 			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read datetimevalue")
 		}
 		return val, nil
+	case core.DTLogical:
+		val, err := fld.dbf.Record.ReadLogical(fld.offset)
+		if err != nil {
+			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read logical value")
+		}
+		return val, nil
+	case core.DTMemo:
+		// Lazy load FPT file if needed
+		if err := fld.dbf.ensureFptLoaded(); err != nil {
+			return nil, NewErrorf("could not load FPT file for field %s", fld.name).SetWrapped(err).SetContext("read memo value")
+		}
+		data, isText, err := fld.dbf.Record.ReadMemo(fld.offset, fld.dbf.fptBlockSize, fld.dbf.fpt)
+		if err != nil {
+			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read memo value")
+		}
+		// Return as string if text, otherwise return as bytes
+		if isText {
+			return string(data), nil
+		}
+		return data, nil
 	default:
 		return nil, NewErrorf("unknown data type %d", fld.datatype)
 	}

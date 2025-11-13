@@ -27,6 +27,7 @@ func Test_ReadValue(t *testing.T) {
 		{1, "names.dbf", "names.csv", ""},
 		{2, "floats.dbf", "floats.csv", ""},
 		{3, "dates.dbf", "dates.csv", ""},
+		{4, "logicalmem.dbf", "logicalmem.csv", ""},
 	}
 
 	for _, tc := range testcases {
@@ -90,6 +91,20 @@ func Test_ReadValue(t *testing.T) {
 							t.Fatalf("unexpected error: %s", err)
 						}
 						assert.Equal(t, dfld.MustValue(), val)
+					case core.DTLogical:
+						var expected bool
+						if cfld == "T" || cfld == "t" || cfld == "Y" || cfld == "y" {
+							expected = true
+						} else {
+							expected = false
+						}
+						assert.Equal(t, expected, dfld.MustValue())
+					case core.DTMemo:
+						// Memo fields return the text content
+						// Normalize line endings (CSV reader normalizes \r\n to \n)
+						memoVal := dfld.MustValue().(string)
+						memoVal = strings.ReplaceAll(memoVal, "\r\n", "\n")
+						assert.Equal(t, cfld, memoVal)
 					default:
 						t.Fatalf("unexpected datatype: %d", dfld.datatype)
 					}
