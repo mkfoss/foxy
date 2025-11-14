@@ -58,13 +58,9 @@ func (fld *Field) Value() (any, error) {
 		if err := fld.dbf.ensureFptLoaded(); err != nil {
 			return nil, NewErrorf("could not load FPT file for field %s", fld.name).SetWrapped(err).SetContext("read memo value")
 		}
-		data, isText, err := fld.dbf.Record.ReadMemo(fld.offset, fld.dbf.fptBlockSize, fld.dbf.fpt)
+		data, _, err := fld.dbf.Record.ReadMemo(fld.offset, fld.dbf.fptBlockSize, fld.dbf.fpt)
 		if err != nil {
 			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read memo value")
-		}
-		// Return as string if text, otherwise return as bytes
-		if isText {
-			return string(data), nil
 		}
 		return data, nil
 	default:

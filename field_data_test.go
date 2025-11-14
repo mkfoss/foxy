@@ -100,11 +100,12 @@ func Test_ReadValue(t *testing.T) {
 						}
 						assert.Equal(t, expected, dfld.MustValue())
 					case core.DTMemo:
-						// Memo fields return the text content
+						// Memo fields return []byte
 						// Normalize line endings (CSV reader normalizes \r\n to \n)
-						memoVal := dfld.MustValue().(string)
-						memoVal = strings.ReplaceAll(memoVal, "\r\n", "\n")
-						assert.Equal(t, cfld, memoVal)
+						memoVal := dfld.MustValue().([]byte)
+						memoStr := string(memoVal)
+						memoStr = strings.ReplaceAll(memoStr, "\r\n", "\n")
+						assert.Equal(t, cfld, memoStr)
 					default:
 						t.Fatalf("unexpected datatype: %d", dfld.datatype)
 					}
