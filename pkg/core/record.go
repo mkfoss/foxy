@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mkfoss/foxy/pkg/julian"
@@ -13,9 +14,10 @@ import (
 )
 
 type Record struct {
-	data     []byte
-	codepage Codepage
-	decoder  *encoding.Decoder
+	data             []byte
+	codepage         Codepage
+	decoder          *encoding.Decoder
+	sanitizereplacer *strings.Replacer
 }
 
 func NewRecord(size int, cp Codepage) *Record {
@@ -49,33 +51,17 @@ func (rec *Record) checkInRange(start, length int) error {
 	return nil
 }
 
-func (rec *Record) ReadString(start, length int, trim, decode bool) (string, error) {
+func (rec *Record) ReadString(start, length int, trim, decode, sanitize bool) (string, error) {
 	if err := rec.checkInRange(start, length); err != nil {
 		return "", err
 	}
 	bts := rec.data[start : start+length]
-	if trim {
-		bts = bytes.TrimRight(bts, "\x20\x00")
-	}
-	if decode {
-		if rec.codepage != 0x00 {
-			if rec.decoder == nil {
-				rec.decoder = CodepageDecoder(rec.codepage)
-			}
-			//if decoder is still nil, means there is no valid encoder
-			if rec.decoder == nil {
-				return "", fmt.Errorf("unsupported codepage 0x%X", byte(rec.codepage))
-			}
 
-			var err error
-			bts, err = rec.decoder.Bytes(bts)
-			if err != nil {
-				return "", err
-			}
-		}
+	str, err := rec.ProcessStringBytes(bts, trim, decode, sanitize)
+	if err != nil {
+		return "", err
 	}
-
-	return string(bts), nil
+	return str, nil
 }
 
 func (rec *Record) ReadCurrency(start int) (float64, error) {
@@ -95,7 +81,7 @@ func (rec *Record) ReadCurrency(start int) (float64, error) {
 	return float64(i) / 10000.00, nil
 }
 
-func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
+func (rec *Record) ReadNumeric(start, length int) (float64, error) {
 	if err := rec.checkInRange(start, length); err != nil {
 		return 0, err
 	}
@@ -107,7 +93,7 @@ func (rec *Record) ReadNumeric(start, length, decimals int) (float64, error) {
 }
 
 func (rec *Record) ReadFloat(start, length, decimals int) (float64, error) {
-	return rec.ReadNumeric(start, length, decimals)
+	return rec.ReadNumeric(start, length)
 }
 
 func (rec *Record) ReadDate(start int) (time.Time, error) {
@@ -234,4 +220,35 @@ func (rec *Record) ReadMemo(start int, blockSize uint16, fpt io.ReadSeeker) ([]b
 	}
 
 	return buf, sign == 1, nil
+}
+
+func (rec *Record) ProcessStringBytes(strbytes []byte, trim, decode, sanitize bool) (string, error) {
+	if trim {
+		strbytes = bytes.Trim(strbytes, "\x20\x00")
+	}
+	if decode {
+		if rec.codepage != 0x00 {
+			if rec.decoder == nil {
+				rec.decoder = CodepageDecoder(rec.codepage)
+			}
+			//if decoder is still nil, means there is no valid encoder
+			if rec.decoder == nil {
+				return "", fmt.Errorf("unsupported codepage 0x%X", byte(rec.codepage))
+			}
+
+			var err error
+			strbytes, err = rec.decoder.Bytes(strbytes)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+	str := string(strbytes)
+	if sanitize {
+		if rec.sanitizereplacer == nil {
+			rec.sanitizereplacer = strings.NewReplacer("\t", "\\t", "\n", "\\n", "\r", "\\r")
+		}
+		str = rec.sanitizereplacer.Replace(str)
+	}
+	return str, nil
 }

@@ -44,7 +44,7 @@ func Test_RecordReadstring(t *testing.T) {
 				t.Fatalf("unexpected load error: %s", err)
 			}
 			var got string
-			got, err = rec.ReadString(tc.start, tc.length, tc.trim, tc.decode)
+			got, err = rec.ReadString(tc.start, tc.length, tc.trim, tc.decode, false)
 			if tc.err != "" {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -123,7 +123,7 @@ func TestRecord_ReadNumeric(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected load error: %s", err)
 			}
-			got, err := rec.ReadNumeric(1, tc.length, tc.dec)
+			got, err := rec.ReadNumeric(1, tc.length)
 			if tc.err != "" {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -363,17 +363,17 @@ func TestRecord_ReadMemo(t *testing.T) {
 	// Helper to create FPT block data
 	createFptBlock := func(blockNum uint32, signature uint32, data []byte) []byte {
 		blockSize := uint16(64) // Standard block size
-		
+
 		// Calculate required size: enough blocks to hold header + data
 		neededBytes := int(blockNum)*int(blockSize) + 8 + len(data)
 		numBlocks := (neededBytes + int(blockSize) - 1) / int(blockSize)
 		fptData := make([]byte, numBlocks*int(blockSize))
-		
+
 		// Write block header at position blockNum * blockSize
 		offset := int(blockNum) * int(blockSize)
 		binary.BigEndian.PutUint32(fptData[offset:offset+4], signature)
 		binary.BigEndian.PutUint32(fptData[offset+4:offset+8], uint32(len(data)))
-		
+
 		// Write data after header
 		copy(fptData[offset+8:], data)
 		return fptData
@@ -382,27 +382,27 @@ func TestRecord_ReadMemo(t *testing.T) {
 	testcases := []*testcase{
 		// Empty memo (block 0)
 		{1, []byte{0x20, 0x00, 0x00, 0x00, 0x00}, 1, 64, []byte{}, nil, false, ""},
-		
+
 		// Text memo at block 1
 		{2, []byte{0x20, 0x01, 0x00, 0x00, 0x00}, 1, 64,
 			createFptBlock(1, 1, []byte("Hello, World!")),
 			[]byte("Hello, World!"), true, ""},
-		
+
 		// Binary memo at block 2
 		{3, []byte{0x20, 0x02, 0x00, 0x00, 0x00}, 1, 64,
 			createFptBlock(2, 0, []byte{0x01, 0x02, 0x03, 0x04}),
 			[]byte{0x01, 0x02, 0x03, 0x04}, false, ""},
-		
+
 		// Text memo with larger content at block 5
 		{4, []byte{0x20, 0x05, 0x00, 0x00, 0x00}, 1, 64,
 			createFptBlock(5, 1, []byte("This is a longer memo field with more text content that spans multiple lines.\nLine 2\nLine 3")),
 			[]byte("This is a longer memo field with more text content that spans multiple lines.\nLine 2\nLine 3"), true, ""},
-		
+
 		// Empty data but non-zero block
 		{5, []byte{0x20, 0x03, 0x00, 0x00, 0x00}, 1, 64,
 			createFptBlock(3, 1, []byte{}),
 			[]byte{}, true, ""},
-		
+
 		// Out of range error
 		{6, []byte{0x20}, 1, 64, []byte{}, nil, false, "out of range"},
 	}
@@ -414,10 +414,10 @@ func TestRecord_ReadMemo(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected load error: %s", err)
 			}
-			
+
 			// Create mock FPT file
 			fpt := bytes.NewReader(tc.fptData)
-			
+
 			gotData, gotText, err := rec.ReadMemo(tc.start, tc.blockSize, fpt)
 			if tc.err != "" {
 				if err == nil {

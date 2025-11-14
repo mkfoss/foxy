@@ -64,19 +64,40 @@ func NewNavigationEofError() Errorer {
 }
 
 type FieldError struct {
-	*Error
-	fld *Field
+	werr *Error
+	fld  *Field
+}
+
+func (fe *FieldError) Error() string {
+
+	return fe.werr.Error()
+}
+
+func (fe *FieldError) Unwrap() error {
+
+	return fe.werr.Unwrap()
+}
+
+func (fe *FieldError) SetWrapped(err error) Errorer {
+
+	return fe.werr.SetWrapped(err)
+}
+
+func (fe *FieldError) SetContext(context string) Errorer {
+
+	return fe.werr.SetContext(context)
 }
 
 func NewFieldError(field *Field, message string) Errorer {
 	return &FieldError{
 		fld: field,
-		Error: &Error{
+		werr: &Error{
 			message: message,
 		},
 	}
 }
 
 func NewFieldErrorf(field *Field, message string, args ...any) Errorer {
+
 	return NewFieldError(field, fmt.Sprintf(message, args...))
 }

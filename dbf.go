@@ -21,7 +21,6 @@ type Dbf struct {
 	hasindex     bool
 	hasfpt       bool
 	codepage     core.Codepage
-	rec          []byte
 	fpt          io.ReadSeekCloser
 	fptFilename  string
 	fptBlockSize uint16

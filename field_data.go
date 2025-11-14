@@ -3,7 +3,6 @@ package foxy
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/mkfoss/foxy/pkg/core"
 )
@@ -12,7 +11,7 @@ func (fld *Field) Value() (any, error) {
 
 	switch fld.datatype {
 	case core.DTCharacter:
-		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, false, false)
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, false, false, false)
 		if err != nil {
 			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read value")
 		}
@@ -24,7 +23,7 @@ func (fld *Field) Value() (any, error) {
 		}
 		return val, nil
 	case core.DTNumeric, core.DTFloat:
-		val, err := fld.dbf.Record.ReadNumeric(fld.offset, fld.size, fld.decimals)
+		val, err := fld.dbf.Record.ReadNumeric(fld.offset, fld.size)
 		if err != nil {
 			return nil, NewErrorf("could not read value for field %s", fld.name).SetWrapped(err).SetContext("read ascii float like value")
 		}
@@ -86,12 +85,7 @@ func (fld *Field) MustValue() any {
 func (fld *Field) AsString(trim, decode, sanitize bool) (string, error) {
 	switch fld.datatype {
 	case core.DTCharacter:
-		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, trim, decode)
-		if sanitize {
-			rp := strings.NewReplacer("\t", "\\t", "\n", "\\n", "\r", "\\r")
-			// todo: worth placing the above somewhere and not recreating every call
-			val = rp.Replace(val)
-		}
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, trim, decode, sanitize)
 		if err != nil {
 			return "", NewFieldError(fld, "call to read string failed").SetWrapped(err).SetContext("as string")
 		}
@@ -130,8 +124,21 @@ func (fld *Field) AsString(trim, decode, sanitize bool) (string, error) {
 		} else {
 			return "F", nil
 		}
+	case core.DTMemo:
+		val, isbinary, err := fld.dbf.ReadMemo(fld.offset, fld.dbf.fptBlockSize, fld.dbf.fpt)
+		if err != nil {
+			return "", NewFieldError(fld, "call to read memo failed").SetWrapped(err).SetContext("as string")
+		}
+		if isbinary {
+			return "", NewFieldError(fld, "cannot read binary memo as string").SetWrapped(err).SetContext("as string")
+		}
+		strval, err := fld.dbf.Record.ProcessStringBytes(val, trim, decode, sanitize)
+		if err != nil {
+			return "", NewFieldError(fld, "call to read process string bytes failed").SetWrapped(err).SetContext("as string")
+		}
+		return strval, nil
 	default:
-		return "", NewFieldErrorf(fld, "unknown data type %d", fld.datatype).SetContext("as string")
+		return "", NewFieldErrorf(fld, "unsupported data type %d", fld.datatype).SetContext("as string")
 	}
 }
 
