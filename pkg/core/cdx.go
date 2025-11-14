@@ -98,76 +98,128 @@ func parseCdxTags(cdxFile *CdxFile) error {
 // readCompoundTag reads the compound tag at block 0
 // Returns a map of tag names to their header offsets
 func readCompoundTag(file io.ReadSeeker) (map[string]int64, error) {
-	// Seek to block 0
+	tagNames := make(map[string]int64)
+
+	// Seek to block 0 (compound tag header)
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
 
-	// Read header block
-	headerBuf := make([]byte, CDXHeaderSize)
-	if _, err := io.ReadFull(file, headerBuf); err != nil {
+	// Read compound tag header
+	headerBuf := make([]byte, CDXBlockSize)
+	n, err := file.Read(headerBuf)
+	if err != nil || n != CDXBlockSize {
 		return nil, err
 	}
 
-	// Verify signature
-	signature := headerBuf[8]
-	if signature != CDXSignature {
-		return nil, fmt.Errorf("invalid CDX signature: expected 0x%02X, got 0x%02X", CDXSignature, signature)
-	}
-
-	// Read root block offset (little-endian uint32)
 	rootBlock := binary.LittleEndian.Uint32(headerBuf[0:4])
+	keyLen := binary.LittleEndian.Uint16(headerBuf[12:14])
 
-	// Read the compound tag block
+	// Navigate to root block
 	if _, err := file.Seek(int64(rootBlock), io.SeekStart); err != nil {
 		return nil, err
 	}
 
-	blockBuf := make([]byte, CDXBlockSize)
-	if _, err := io.ReadFull(file, blockBuf); err != nil {
+	rootBuf := make([]byte, CDXBlockSize)
+	n, err = file.Read(rootBuf)
+	if err != nil || n != CDXBlockSize {
 		return nil, err
 	}
 
-	// Parse block header
-	blockType := binary.LittleEndian.Uint16(blockBuf[0:2])
-	numKeys := binary.LittleEndian.Uint16(blockBuf[2:4])
+	blockType := binary.LittleEndian.Uint16(rootBuf[0:2])
+	numKeys := binary.LittleEndian.Uint16(rootBuf[2:4])
 
-	// Verify this is a compound tag block
-	if blockType != CDXCompoundType {
-		return nil, fmt.Errorf("expected compound tag block type 0x%02X, got 0x%02X", CDXCompoundType, blockType)
+	// If branch, navigate to first leaf
+	if (blockType & 0x03) <= 1 {
+		// Follow first child pointer
+		offset := 12 + int(keyLen) + 4
+		if offset+4 > len(rootBuf) {
+			return nil, fmt.Errorf("invalid compound tag structure")
+		}
+		childPtr := binary.BigEndian.Uint32(rootBuf[offset : offset+4])
+
+		if _, err := file.Seek(int64(childPtr), io.SeekStart); err != nil {
+			return nil, err
+		}
+
+		n, err = file.Read(rootBuf)
+		if err != nil || n != CDXBlockSize {
+			return nil, err
+		}
+
+		numKeys = binary.LittleEndian.Uint16(rootBuf[2:4])
 	}
 
-	// Parse tag entries
-	tags := make(map[string]int64)
-	offset := 12 // Start after block header
+	// Parse compact leaf to extract tag names
+	recNumMask := binary.LittleEndian.Uint32(rootBuf[14:18])
+	shortBytes := int(rootBuf[23])
+	dupCntBits := rootBuf[21]
+	trailCntBits := rootBuf[22]
+	dupCntMask := rootBuf[18]
+	trailCntMask := rootBuf[19]
+
+	if shortBytes == 0 || shortBytes > 6 {
+		return nil, fmt.Errorf("invalid shortBytes value: %d", shortBytes)
+	}
+
+	infoStart := 24
+	extSpace := CDXBlockSize - 24
+	kPos := extSpace
+
+	keyData := make([]byte, keyLen)
+	for j := range keyData {
+		keyData[j] = ' '
+	}
 
 	for i := 0; i < int(numKeys); i++ {
-		// Each entry is: tag name (11 bytes) + header offset (4 bytes big-endian)
-		if offset+CDXTagNameSize+4 > len(blockBuf) {
+		v := i * shortBytes
+
+		if infoStart+v+shortBytes > len(rootBuf) {
 			break
 		}
 
-		// Extract tag name (null-terminated or space-padded)
-		nameBytes := blockBuf[offset : offset+CDXTagNameSize]
-		tagName := ""
-		for _, b := range nameBytes {
-			if b == 0 || b == ' ' {
+		// Read control word
+		c := binary.LittleEndian.Uint16(rootBuf[infoStart+v+shortBytes-2:])
+		trailCnt := int((c >> (16 - trailCntBits)) & uint16(trailCntMask))
+		dupCnt := int((c >> (16 - (trailCntBits + dupCntBits))) & uint16(dupCntMask))
+
+		// Read record number (tag header offset)
+		var rawRecNo uint32
+		switch shortBytes {
+		case 2:
+			rawRecNo = uint32(binary.LittleEndian.Uint16(rootBuf[infoStart+v:]))
+		case 3:
+			rawRecNo = uint32(rootBuf[infoStart+v]) |
+				(uint32(rootBuf[infoStart+v+1]) << 8) |
+				(uint32(rootBuf[infoStart+v+2]) << 16)
+		case 4:
+			rawRecNo = binary.LittleEndian.Uint32(rootBuf[infoStart+v:])
+		}
+		tagOffset := int64(rawRecNo & recNumMask)
+
+		// Reconstruct key (tag name)
+		kPos = kPos - int(keyLen) + dupCnt + trailCnt
+		newBytes := int(keyLen) - dupCnt - trailCnt
+		if newBytes > 0 {
+			if infoStart+kPos+newBytes > len(rootBuf) {
 				break
 			}
-			tagName += string(b)
+			copy(keyData[dupCnt:dupCnt+newBytes], rootBuf[infoStart+kPos:infoStart+kPos+newBytes])
 		}
-		offset += CDXTagNameSize
-
-		// Extract header offset (big-endian)
-		headerOffset := int64(binary.BigEndian.Uint32(blockBuf[offset : offset+4]))
-		offset += 4
-
-		if tagName != "" {
-			tags[tagName] = headerOffset
+		for j := int(keyLen) - trailCnt; j < int(keyLen); j++ {
+			keyData[j] = 0
 		}
+
+		// Trim nulls and spaces to get tag name
+		tagName := string(keyData)
+		for len(tagName) > 0 && (tagName[len(tagName)-1] == 0 || tagName[len(tagName)-1] == ' ') {
+			tagName = tagName[:len(tagName)-1]
+		}
+
+		tagNames[tagName] = tagOffset
 	}
 
-	return tags, nil
+	return tagNames, nil
 }
 
 // readTagHeader reads a tag header at the specified offset
@@ -187,17 +239,17 @@ func readTagHeader(file io.ReadSeeker, offset int64, tagName string) (*CdxTag, e
 	rootBlock := binary.LittleEndian.Uint32(headerBuf[0:4])
 	// freeBlock := binary.LittleEndian.Uint32(headerBuf[4:8])
 	// version := headerBuf[8]
-	keyLen := binary.LittleEndian.Uint16(headerBuf[10:12])
-	options := headerBuf[12]
-	signature := headerBuf[13]
+	keyLen := binary.LittleEndian.Uint16(headerBuf[12:14])
+	typeCode := headerBuf[14]
+	signature := headerBuf[15]
 
 	// Verify signature
 	if signature != CDXSignature {
 		return nil, fmt.Errorf("invalid tag header signature")
 	}
 
-	// Determine if descending
-	descending := (options & 0x08) != 0
+	// Determine if descending (bit 0x40 in typeCode)
+	descending := (typeCode & 0x40) != 0
 
 	// Extract key expression (starts at offset 528, null-terminated)
 	keyExprStart := 528
@@ -214,7 +266,7 @@ func readTagHeader(file io.ReadSeeker, offset int64, tagName string) (*CdxTag, e
 		Expression: keyExpr,
 		RootBlock:  rootBlock,
 		KeyLen:     keyLen,
-		TypeCode:   headerBuf[14], // Type code at offset 14
+		TypeCode:   typeCode,
 		Descending: descending,
 		HeaderPos:  offset,
 	}
