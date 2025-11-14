@@ -10,36 +10,51 @@ import (
 )
 
 type Dbf struct {
-	filename     string
-	dbftype      core.Dbftype
-	opener       Opener
-	fl           io.ReadSeekCloser
-	lastupdated  time.Time
-	recordoffset int
-	recordcount  int
-	recordsize   int
-	hasindex     bool
-	hasfpt       bool
-	codepage     core.Codepage
-	fpt          io.ReadSeekCloser
-	fptFilename  string
-	fptBlockSize uint16
+	filename           string
+	dbftype            core.Dbftype
+	opener             Opener
+	fl                 io.ReadSeekCloser
+	lastupdated        time.Time
+	recordoffset       int
+	recordcount        int
+	recordsize         int
+	hasindex           bool
+	hasfpt             bool
+	codepage           core.Codepage
+	rec                []byte
+	fpt                io.ReadSeekCloser
+	fptFilename        string
+	fptBlockSize       uint16
+	UseFuzzyFileSearch bool
 
 	*Fields
 	*core.Record
 	Navigator
 }
-
 func (dbf *Dbf) Open(name string) error {
 
 	return dbf.OpenWithOpener(name, &OsOpener{})
 }
 
 func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
+	// Use fuzzy file search if enabled and opener supports listing
+	dbfFilename := name
+	if dbf.UseFuzzyFileSearch {
+		// Check if opener supports OpenerLister interface
+		if lister, ok := opener.(core.OpenerLister); ok {
+			foundFile, err := core.FuzzyFindFile(name, core.FTDbf, lister)
+			if err != nil {
+				return NewErrorf("fuzzy search for dbf %s failed", name).SetContext("open with opener").SetWrapped(err)
+			}
+			dbfFilename = foundFile
+		} else {
+			return NewError("fuzzy file search enabled but opener does not support OpenerLister interface").SetContext("open with opener")
+		}
+	}
 
-	fl, err := opener.OpenFile(name, os.O_RDONLY, 0600)
+	fl, err := opener.OpenFile(dbfFilename, os.O_RDONLY, 0600)
 	if err != nil {
-		return NewErrorf("open dbf %s failed", name).SetContext("open with opener").SetWrapped(err)
+		return NewErrorf("open dbf %s failed", dbfFilename).SetContext("open with opener").SetWrapped(err)
 	}
 	dbft, err := core.ReadDbftype(fl)
 	if err != nil {
@@ -70,7 +85,7 @@ func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 
 	dbf.opener = opener
 	dbf.fl = fl
-	dbf.filename = name
+	dbf.filename = dbfFilename
 
 	flds := &Fields{}
 	if err = flds.Read(dbf); err != nil {
@@ -216,26 +231,42 @@ func (dbf *Dbf) ensureFptLoaded() error {
 		return NewError("dbf header indicates no fpt file")
 	}
 
-	// Determine FPT filename (same as DBF but with .fpt extension)
+	// Determine FPT filename base (strip extension from DBF filename)
+	baseFilename := dbf.filename
 	dbfExt := ""
 	for i := len(dbf.filename) - 1; i >= 0; i-- {
 		if dbf.filename[i] == '.' {
 			dbfExt = dbf.filename[i:]
+			baseFilename = dbf.filename[:i]
 			break
 		}
 	}
 
-	fptExt := ".fpt"
-	if len(dbfExt) > 0 && dbfExt[0] == '.' {
+	// Use fuzzy file search if enabled and opener supports listing, otherwise construct the filename
+	var fptFilename string
+	if dbf.UseFuzzyFileSearch {
+		// Check if opener supports OpenerLister interface
+		if lister, ok := dbf.opener.(core.OpenerLister); ok {
+			foundFile, err := core.FuzzyFindFile(baseFilename, core.FTFpt, lister)
+			if err != nil {
+				return NewErrorf("fuzzy search for fpt file failed").SetWrapped(err).SetContext("ensure fpt loaded")
+			}
+			fptFilename = foundFile
+		} else {
+			return NewError("fuzzy file search enabled but opener does not support OpenerLister interface").SetContext("ensure fpt loaded")
+		}
+	} else {
 		// Match case of DBF extension
-		if dbfExt[1:2] == "D" || dbfExt[1:2] == "d" {
-			if dbfExt[1:2] == "D" {
-				fptExt = ".FPT"
+		fptExt := ".fpt"
+		if len(dbfExt) > 0 && dbfExt[0] == '.' {
+			if dbfExt[1:2] == "D" || dbfExt[1:2] == "d" {
+				if dbfExt[1:2] == "D" {
+					fptExt = ".FPT"
+				}
 			}
 		}
+		fptFilename = baseFilename + fptExt
 	}
-
-	fptFilename := dbf.filename[:len(dbf.filename)-len(dbfExt)] + fptExt
 
 	// Open FPT file
 	fptFile, err := dbf.opener.OpenFile(fptFilename, os.O_RDONLY, 0600)
