@@ -3,6 +3,7 @@ package foxy
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/mkfoss/foxy/pkg/core"
 )
@@ -113,7 +114,7 @@ func (fld *Field) AsString(trim, decode, sanitize bool) (string, error) {
 		if err != nil {
 			return "", NewFieldError(fld, "call to read int failed").SetWrapped(err).SetContext("as string")
 		}
-		return strconv.Itoa(val.(int)), nil
+		return strconv.Itoa(int(val.(int32))), nil
 	case core.DTLogical:
 		val, err := fld.dbf.Record.ReadLogical(fld.offset)
 		if err != nil {
@@ -148,4 +149,157 @@ func (fld *Field) MustAsString(trim, decode, sanitize bool) string {
 		panic(err)
 	}
 	return str
+}
+
+func (fld *Field) AsFloat() (float64, error) {
+	switch fld.datatype {
+	case core.DTCurrency, core.DTDouble, core.DTFloat, core.DTNumeric:
+		val, err := fld.Value()
+		if err != nil {
+			return 0, NewFieldError(fld, "call to value failed").SetWrapped(err).SetContext("as float")
+		}
+		return val.(float64), nil
+	case core.DTInteger:
+		val, err := fld.Value()
+		if err != nil {
+			return 0, NewFieldError(fld, "call to value failed").SetWrapped(err).SetContext("as float")
+		}
+		return float64(val.(int32)), nil
+	case core.DTCharacter:
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, true, false, false)
+		if err != nil {
+			return 0, NewFieldError(fld, "call to read string failed").SetWrapped(err).SetContext("as float")
+		}
+		floatVal, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return 0, NewFieldError(fld, "cannot parse string as float").SetWrapped(err).SetContext("as float")
+		}
+		return floatVal, nil
+	default:
+		return 0, NewFieldErrorf(fld, "unsupported data type %d", fld.datatype).SetContext("as float")
+	}
+}
+
+func (fld *Field) MustAsFloat() float64 {
+	val, err := fld.AsFloat()
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
+func (fld *Field) AsTime() (time.Time, error) {
+	switch fld.datatype {
+	case core.DTDate:
+		val, err := fld.dbf.Record.ReadDate(fld.offset)
+		if err != nil {
+			return time.Time{}, NewFieldError(fld, "call to read date failed").SetWrapped(err).SetContext("as time")
+		}
+		return val, nil
+	case core.DTDateTime:
+		val, err := fld.dbf.Record.ReadDateTime(fld.offset)
+		if err != nil {
+			return time.Time{}, NewFieldError(fld, "call to read date time failed").SetWrapped(err).SetContext("as time")
+		}
+		return val, nil
+	case core.DTCharacter:
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, true, false, false)
+		if err != nil {
+			return time.Time{}, NewFieldError(fld, "call to read string failed").SetWrapped(err).SetContext("as time")
+		}
+		// Try date format first
+		timeVal, err := time.Parse("2006-01-02", val)
+		if err != nil {
+			// Try datetime format
+			timeVal, err = time.Parse("2006-01-02T15:04:05", val)
+			if err != nil {
+				return time.Time{}, NewFieldError(fld, "cannot parse string as time").SetWrapped(err).SetContext("as time")
+			}
+		}
+		return timeVal, nil
+	default:
+		return time.Time{}, NewFieldErrorf(fld, "unsupported data type %d", fld.datatype).SetContext("as time")
+	}
+}
+
+func (fld *Field) MustAsTime() time.Time {
+	val, err := fld.AsTime()
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
+func (fld *Field) AsInteger() (int, error) {
+	switch fld.datatype {
+	case core.DTInteger:
+		val, err := fld.Value()
+		if err != nil {
+			return 0, NewFieldError(fld, "call to value failed").SetWrapped(err).SetContext("as integer")
+		}
+		return int(val.(int32)), nil
+	case core.DTCurrency, core.DTDouble, core.DTFloat, core.DTNumeric:
+		val, err := fld.Value()
+		if err != nil {
+			return 0, NewFieldError(fld, "call to value failed").SetWrapped(err).SetContext("as integer")
+		}
+		return int(val.(float64)), nil
+	case core.DTCharacter:
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, true, false, false)
+		if err != nil {
+			return 0, NewFieldError(fld, "call to read string failed").SetWrapped(err).SetContext("as integer")
+		}
+		intVal, err := strconv.Atoi(val)
+		if err != nil {
+			return 0, NewFieldError(fld, "cannot parse string as integer").SetWrapped(err).SetContext("as integer")
+		}
+		return intVal, nil
+	default:
+		return 0, NewFieldErrorf(fld, "unsupported data type %d", fld.datatype).SetContext("as integer")
+	}
+}
+
+func (fld *Field) MustAsInteger() int {
+	val, err := fld.AsInteger()
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
+func (fld *Field) AsLogical() (bool, error) {
+	switch fld.datatype {
+	case core.DTLogical:
+		val, err := fld.dbf.Record.ReadLogical(fld.offset)
+		if err != nil {
+			return false, NewFieldError(fld, "call to read logical failed").SetWrapped(err).SetContext("as logical")
+		}
+		return val, nil
+	case core.DTCharacter:
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, true, false, false)
+		if err != nil {
+			return false, NewFieldError(fld, "call to read string failed").SetWrapped(err).SetContext("as logical")
+		}
+		if len(val) == 0 {
+			return false, nil
+		}
+		switch val[0] {
+		case 'T', 't', 'Y', 'y':
+			return true, nil
+		case 'F', 'f', 'N', 'n', '?', ' ':
+			return false, nil
+		default:
+			return false, NewFieldErrorf(fld, "invalid logical character: %c", val[0]).SetContext("as logical")
+		}
+	default:
+		return false, NewFieldErrorf(fld, "unsupported data type %d", fld.datatype).SetContext("as logical")
+	}
+}
+
+func (fld *Field) MustAsLogical() bool {
+	val, err := fld.AsLogical()
+	if err != nil {
+		panic(err)
+	}
+	return val
 }
