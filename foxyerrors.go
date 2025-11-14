@@ -1,5 +1,8 @@
 package foxy
 
+// todo: redesign error system, to have own Error interfaceand then separate error types that implement that interface,
+// like in FieldError
+
 import "fmt"
 
 type Errorer interface {
@@ -58,4 +61,22 @@ func NewNavigationBofError() Errorer {
 
 func NewNavigationEofError() Errorer {
 	return &Error{message: "eof"}
+}
+
+type FieldError struct {
+	*Error
+	fld *Field
+}
+
+func NewFieldError(field *Field, message string) Errorer {
+	return &FieldError{
+		fld: field,
+		Error: &Error{
+			message: message,
+		},
+	}
+}
+
+func NewFieldErrorf(field *Field, message string, args ...any) Errorer {
+	return NewFieldError(field, fmt.Sprintf(message, args...))
 }

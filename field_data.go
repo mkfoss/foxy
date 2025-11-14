@@ -1,6 +1,12 @@
 package foxy
 
-import "github.com/mkfoss/foxy/pkg/core"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/mkfoss/foxy/pkg/core"
+)
 
 func (fld *Field) Value() (any, error) {
 
@@ -75,4 +81,64 @@ func (fld *Field) MustValue() any {
 		panic(err)
 	}
 	return val
+}
+
+func (fld *Field) AsString(trim, decode, sanitize bool) (string, error) {
+	switch fld.datatype {
+	case core.DTCharacter:
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, trim, decode)
+		if sanitize {
+			rp := strings.NewReplacer("\t", "\\t", "\n", "\\n", "\r", "\\r")
+			// todo: worth placing the above somewhere and not recreating every call
+			val = rp.Replace(val)
+		}
+		if err != nil {
+			return "", NewFieldError(fld, "call to read string failed").SetWrapped(err).SetContext("as string")
+		}
+		return val, nil
+	case core.DTCurrency, core.DTDouble, core.DTFloat, core.DTNumeric:
+		val, err := fld.Value()
+		if err != nil {
+			return "", NewFieldError(fld, "call to value failed").SetWrapped(err).SetContext("as string")
+		}
+		return fmt.Sprintf("%f", val), nil
+	case core.DTDate:
+		val, err := fld.dbf.Record.ReadDate(fld.offset)
+		if err != nil {
+			return "", NewFieldError(fld, "call to read date failed").SetWrapped(err).SetContext("as string")
+		}
+		return val.Format("2006-01-02"), nil
+	case core.DTDateTime:
+		val, err := fld.dbf.Record.ReadDateTime(fld.offset)
+		if err != nil {
+			return "", NewFieldError(fld, "call to read date time failed").SetWrapped(err).SetContext("as string")
+		}
+		return val.Format("2006-01-02T15:04:05"), nil
+	case core.DTInteger:
+		val, err := fld.Value()
+		if err != nil {
+			return "", NewFieldError(fld, "call to read int failed").SetWrapped(err).SetContext("as string")
+		}
+		return strconv.Itoa(val.(int)), nil
+	case core.DTLogical:
+		val, err := fld.dbf.Record.ReadLogical(fld.offset)
+		if err != nil {
+			return "", NewFieldError(fld, "call to read logical failed").SetWrapped(err).SetContext("as string")
+		}
+		if val {
+			return "T", nil
+		} else {
+			return "F", nil
+		}
+	default:
+		return "", NewFieldErrorf(fld, "unknown data type %d", fld.datatype).SetContext("as string")
+	}
+}
+
+func (fld *Field) MustAsString(trim, decode, sanitize bool) string {
+	str, err := fld.AsString(trim, decode, sanitize)
+	if err != nil {
+		panic(err)
+	}
+	return str
 }
