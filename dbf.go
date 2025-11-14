@@ -25,6 +25,8 @@ type Dbf struct {
 	fpt                io.ReadSeekCloser
 	fptFilename        string
 	fptBlockSize       uint16
+	cdx                *core.CdxFile
+	cdxFilename        string
 	UseFuzzyFileSearch bool
 
 	*Fields
@@ -123,6 +125,17 @@ func (dbf *Dbf) Close() error {
 		dbf.fptBlockSize = 0
 	}
 
+	// Close CDX file if open
+	if dbf.cdx != nil {
+		if closer, ok := dbf.cdx.File.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				return NewErrorf("close cdx %s failed", dbf.cdxFilename).SetWrapped(err).SetContext("close dbf")
+			}
+		}
+		dbf.cdx = nil
+		dbf.cdxFilename = ""
+	}
+
 	dbf.lastupdated = time.Time{}
 	dbf.recordoffset = 0
 	dbf.recordsize = 0
@@ -199,6 +212,12 @@ func (dbf *Dbf) SetNavigator(navi Navigator) error {
 	}
 
 	dbf.Navigator = navi
+
+	// If this is a CdxNavigator, set the Dbf reference
+	if cdxNav, ok := navi.(*CdxNavigator); ok {
+		cdxNav.SetDbf(dbf)
+	}
+
 	if err := dbf.Navigator.Initialize(dbf.fl, dbf.recordoffset, dbf.recordsize, dbf.recordcount, dbf.readFunc); err != nil {
 		return NewError("navigator initialize failed").SetContext("set navigator").SetWrapped(err)
 	}
@@ -296,6 +315,73 @@ func (dbf *Dbf) ensureFptLoaded() error {
 	dbf.fpt = fptFile
 	dbf.fptFilename = fptFilename
 	dbf.fptBlockSize = blockSize
+
+	return nil
+}
+
+func (dbf *Dbf) ensureCdxLoaded() error {
+	// Already loaded
+	if dbf.cdx != nil {
+		return nil
+	}
+
+	// Check if CDX exists according to header
+	if !dbf.hasindex {
+		return NewError("dbf header indicates no cdx file")
+	}
+
+	// Determine CDX filename base (strip extension from DBF filename)
+	baseFilename := dbf.filename
+	dbfExt := ""
+	for i := len(dbf.filename) - 1; i >= 0; i-- {
+		if dbf.filename[i] == '.' {
+			dbfExt = dbf.filename[i:]
+			baseFilename = dbf.filename[:i]
+			break
+		}
+	}
+
+	// Use fuzzy file search if enabled and opener supports listing, otherwise construct the filename
+	var cdxFilename string
+	if dbf.UseFuzzyFileSearch {
+		// Check if opener supports OpenerLister interface
+		if lister, ok := dbf.opener.(core.OpenerLister); ok {
+			foundFile, err := core.FuzzyFindFile(baseFilename, core.FTCdx, lister)
+			if err != nil {
+				return NewErrorf("fuzzy search for cdx file failed").SetWrapped(err).SetContext("ensure cdx loaded")
+			}
+			cdxFilename = foundFile
+		} else {
+			return NewError("fuzzy file search enabled but opener does not support OpenerLister interface").SetContext("ensure cdx loaded")
+		}
+	} else {
+		// Match case of DBF extension
+		cdxExt := ".cdx"
+		if len(dbfExt) > 0 && dbfExt[0] == '.' {
+			if dbfExt[1:2] == "D" || dbfExt[1:2] == "d" {
+				if dbfExt[1:2] == "D" {
+					cdxExt = ".CDX"
+				}
+			}
+		}
+		cdxFilename = baseFilename + cdxExt
+	}
+
+	// Open CDX file
+	cdxFile, err := dbf.opener.OpenFile(cdxFilename, os.O_RDONLY, 0600)
+	if err != nil {
+		return NewErrorf("failed to open CDX file %s", cdxFilename).SetWrapped(err).SetContext("ensure cdx loaded")
+	}
+
+	// Parse CDX file
+	cdx, err := core.OpenCdx(cdxFile)
+	if err != nil {
+		_ = cdxFile.Close()
+		return NewError("failed to parse CDX file").SetWrapped(err).SetContext("ensure cdx loaded")
+	}
+
+	dbf.cdx = cdx
+	dbf.cdxFilename = cdxFilename
 
 	return nil
 }
