@@ -385,3 +385,56 @@ func (dbf *Dbf) ensureCdxLoaded() error {
 
 	return nil
 }
+
+// Seek searches for a key in the specified CDX tag and positions at the found record
+// Returns the record number and seek result
+// The searchString is the key value to search for
+func (dbf *Dbf) Seek(indexTag string, searchString string) (int32, core.SeekResult, error) {
+	if !dbf.Active() {
+		return 0, core.SeekError, NewInactiveError().SetContext("seek")
+	}
+
+	// Ensure CDX file is loaded
+	if err := dbf.ensureCdxLoaded(); err != nil {
+		return 0, core.SeekError, NewError("failed to load CDX file").SetWrapped(err).SetContext("seek")
+	}
+
+	// Find the specified tag
+	tag := dbf.cdx.FindTag(indexTag)
+	if tag == nil {
+		return 0, core.SeekError, NewError("CDX tag not found: " + indexTag).SetContext("seek")
+	}
+
+	// Search for the key
+	recNo, result := tag.Seek(dbf.cdx, searchString)
+
+	// If found or positioned after, read the record
+	if result == core.SeekSuccess || result == core.SeekAfter {
+		// Calculate byte offset and read the record
+		byteOffset := int64(dbf.recordoffset + dbf.recordsize*int(recNo-1))
+		if _, err := dbf.fl.Seek(byteOffset, 0); err != nil {
+			return recNo, result, NewError("failed to seek to record").SetWrapped(err).SetContext("seek")
+		}
+		if err := dbf.readFunc(); err != nil {
+			return recNo, result, NewError("failed to read record").SetWrapped(err).SetContext("seek")
+		}
+	}
+
+	return recNo, result, nil
+}
+
+// Find searches for an exact match in the specified CDX tag
+// Returns the record number if found, otherwise 0
+// The searchString is the key value to search for
+func (dbf *Dbf) Find(indexTag string, searchString string) (int32, error) {
+	recNo, result, err := dbf.Seek(indexTag, searchString)
+	if err != nil {
+		return 0, err
+	}
+
+	if result != core.SeekSuccess {
+		return 0, NewError("key not found").SetContext("find")
+	}
+
+	return recNo, nil
+}
