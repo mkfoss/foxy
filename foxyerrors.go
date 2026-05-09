@@ -5,6 +5,8 @@ package foxy
 
 import "fmt"
 
+// Errorer is the interface that all foxy errors implement.
+// It provides methods for wrapping other errors and adding context.
 type Errorer interface {
 	Error() string
 	Unwrap() error
@@ -12,6 +14,7 @@ type Errorer interface {
 	SetContext(context string) Errorer
 }
 
+// Error is a basic foxy error implementation.
 type Error struct {
 	context string
 	message string
@@ -39,30 +42,37 @@ func (fer *Error) SetContext(context string) Errorer {
 	return fer
 }
 
+// NewError creates a new foxy error with the given message.
 func NewError(message string) Errorer {
 	return &Error{message: message}
 }
 
+// NewErrorf creates a new foxy error with a formatted message.
 func NewErrorf(message string, args ...any) Errorer {
 	return NewError(fmt.Sprintf(message, args...))
 }
 
+// NewInactiveError returns an error indicating the DBF is not open.
 func NewInactiveError() Errorer {
 	return &Error{message: "dbf is inactive, could not perform operation"}
 }
 
+// NewNavigationError returns a general navigation error.
 func NewNavigationError() Errorer {
 	return &Error{message: "navigation error"}
 }
 
+// NewNavigationBofError returns an error indicating the beginning of the file has been reached.
 func NewNavigationBofError() Errorer {
 	return &Error{message: "bof"}
 }
 
+// NewNavigationEofError returns an error indicating the end of the file has been reached.
 func NewNavigationEofError() Errorer {
 	return &Error{message: "eof"}
 }
 
+// FieldError is an error associated with a specific field.
 type FieldError struct {
 	werr *Error
 	fld  *Field

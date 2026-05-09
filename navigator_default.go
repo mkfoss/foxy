@@ -5,6 +5,8 @@ import (
 	"io"
 )
 
+// DefaulNavigator is the default navigation strategy for DBF files.
+// It traverses records in their physical order as stored in the file.
 type DefaulNavigator struct {
 	offset   int
 	size     int

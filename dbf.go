@@ -9,6 +9,9 @@ import (
 	"github.com/mkfoss/foxy/pkg/core"
 )
 
+// Dbf represents an XBase (dBase, FoxPro) database file.
+// It provides methods for opening, closing, and navigating records,
+// as well as accessing field data.
 type Dbf struct {
 	filename           string
 	dbftype            core.Dbftype
@@ -27,17 +30,23 @@ type Dbf struct {
 	fptBlockSize       uint16
 	cdx                *core.CdxFile
 	cdxFilename        string
+	// UseFuzzyFileSearch enables automatic discovery of associated files (.cdx, .fpt)
+	// even if their casing or directory doesn't perfectly match the DBF.
 	UseFuzzyFileSearch bool
 
 	*Fields
 	*core.Record
 	Navigator
 }
+
+// Open opens a DBF file from the local file system.
 func (dbf *Dbf) Open(name string) error {
 
 	return dbf.OpenWithOpener(name, &OsOpener{})
 }
 
+// OpenWithOpener opens a DBF file using a custom Opener implementation.
+// This allows reading from non-standard sources like ZIP files or memory.
 func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 	// Use fuzzy file search if enabled and opener supports listing
 	dbfFilename := name
@@ -105,6 +114,7 @@ func (dbf *Dbf) OpenWithOpener(name string, opener Opener) error {
 	return nil
 }
 
+// Close closes the DBF file and any associated files (CDX, FPT).
 func (dbf *Dbf) Close() error {
 
 	err := dbf.fl.Close()
@@ -160,46 +170,58 @@ func (dbf *Dbf) Close() error {
 	return nil
 }
 
+// LastUpdated returns the date the DBF file was last modified, according to its header.
 func (dbf *Dbf) LastUpdated() time.Time {
 	return dbf.lastupdated
 }
 
+// RecordOffset returns the byte offset in the file where the first record starts.
 func (dbf *Dbf) RecordOffset() int {
 	return dbf.recordoffset
 }
 
+// RecordCount returns the total number of records in the DBF file.
 func (dbf *Dbf) RecordCount() int {
 	return dbf.recordcount
 }
 
+// RecordSize returns the size of each record in bytes.
 func (dbf *Dbf) RecordSize() int {
 	return dbf.recordsize
 }
 
+// HasIndex returns true if the DBF header indicates an associated index file.
 func (dbf *Dbf) HasIndex() bool {
 	return dbf.hasindex
 }
 
+// HasFpt returns true if the DBF header indicates an associated memo (FPT) file.
 func (dbf *Dbf) HasFpt() bool {
 	return dbf.hasfpt
 }
 
+// CodePage returns the character encoding code page of the DBF file.
 func (dbf *Dbf) CodePage() core.Codepage {
 	return dbf.codepage
 }
 
+// Active returns true if the DBF file is currently open.
 func (dbf *Dbf) Active() bool {
 	return dbf.fl != nil
 }
 
+// Filename returns the name of the opened DBF file.
 func (dbf *Dbf) Filename() string {
 	return dbf.filename
 }
 
+// FptFilename returns the name of the associated memo file, if any.
 func (dbf *Dbf) FptFilename() string {
 	return dbf.fptFilename
 }
 
+// SetNavigator changes the navigation strategy for the DBF file.
+// By default, it uses DefaulNavigator (physical order).
 func (dbf *Dbf) SetNavigator(navi Navigator) error {
 	if !dbf.Active() {
 		return NewInactiveError().SetContext("set navigator")

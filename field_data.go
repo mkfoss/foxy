@@ -8,6 +8,8 @@ import (
 	"github.com/mkfoss/foxy/pkg/core"
 )
 
+// Value returns the raw value of the field as an interface{}.
+// The underlying type depends on the field's data type.
 func (fld *Field) Value() (any, error) {
 
 	switch fld.datatype {
@@ -74,6 +76,7 @@ func (fld *Field) Value() (any, error) {
 	}
 }
 
+// MustValue returns the raw value of the field and panics if an error occurs.
 func (fld *Field) MustValue() any {
 
 	val, err := fld.Value()
@@ -83,6 +86,10 @@ func (fld *Field) MustValue() any {
 	return val
 }
 
+// AsString returns the field value as a string.
+// trim: remove trailing spaces.
+// decode: decode character encoding.
+// sanitize: remove non-printable characters.
 func (fld *Field) AsString(trim, decode, sanitize bool) (string, error) {
 	switch fld.datatype {
 	case core.DTCharacter:
@@ -143,6 +150,7 @@ func (fld *Field) AsString(trim, decode, sanitize bool) (string, error) {
 	}
 }
 
+// MustAsString returns the field value as a string and panics if an error occurs.
 func (fld *Field) MustAsString(trim, decode, sanitize bool) string {
 	str, err := fld.AsString(trim, decode, sanitize)
 	if err != nil {
@@ -151,6 +159,8 @@ func (fld *Field) MustAsString(trim, decode, sanitize bool) string {
 	return str
 }
 
+// AsFloat returns the field value as a float64.
+// Supports Numeric, Float, Currency, Double, Integer, and Character (if numeric) fields.
 func (fld *Field) AsFloat() (float64, error) {
 	switch fld.datatype {
 	case core.DTCurrency, core.DTDouble, core.DTFloat, core.DTNumeric:
@@ -180,6 +190,7 @@ func (fld *Field) AsFloat() (float64, error) {
 	}
 }
 
+// MustAsFloat returns the field value as a float64 and panics if an error occurs.
 func (fld *Field) MustAsFloat() float64 {
 	val, err := fld.AsFloat()
 	if err != nil {
@@ -188,6 +199,8 @@ func (fld *Field) MustAsFloat() float64 {
 	return val
 }
 
+// AsTime returns the field value as a time.Time.
+// Supports Date, DateTime, and Character (if formatted) fields.
 func (fld *Field) AsTime() (time.Time, error) {
 	switch fld.datatype {
 	case core.DTDate:
@@ -222,6 +235,7 @@ func (fld *Field) AsTime() (time.Time, error) {
 	}
 }
 
+// MustAsTime returns the field value as a time.Time and panics if an error occurs.
 func (fld *Field) MustAsTime() time.Time {
 	val, err := fld.AsTime()
 	if err != nil {
@@ -230,6 +244,8 @@ func (fld *Field) MustAsTime() time.Time {
 	return val
 }
 
+// AsInteger returns the field value as an int.
+// Supports Integer, Numeric, Float, Currency, Double, and Character (if numeric) fields.
 func (fld *Field) AsInteger() (int, error) {
 	switch fld.datatype {
 	case core.DTInteger:
@@ -259,6 +275,7 @@ func (fld *Field) AsInteger() (int, error) {
 	}
 }
 
+// MustAsInteger returns the field value as an int and panics if an error occurs.
 func (fld *Field) MustAsInteger() int {
 	val, err := fld.AsInteger()
 	if err != nil {
@@ -267,6 +284,8 @@ func (fld *Field) MustAsInteger() int {
 	return val
 }
 
+// AsLogical returns the field value as a bool.
+// Supports Logical and Character (T/F/Y/N) fields.
 func (fld *Field) AsLogical() (bool, error) {
 	switch fld.datatype {
 	case core.DTLogical:
@@ -296,6 +315,7 @@ func (fld *Field) AsLogical() (bool, error) {
 	}
 }
 
+// MustAsLogical returns the field value as a bool and panics if an error occurs.
 func (fld *Field) MustAsLogical() bool {
 	val, err := fld.AsLogical()
 	if err != nil {

@@ -59,19 +59,22 @@ func (flds *Fields) Read(dbf *Dbf) error {
 	return nil
 }
 
+// Count returns the number of fields in the table.
 func (flds *Fields) Count() int {
 
 	return len(flds.fields)
 }
 
+// Field returns the field at the specified 0-based index.
 func (flds *Fields) Field(index int) *Field {
 
-	if index < 0 && index >= len(flds.fields) {
+	if index < 0 || index >= len(flds.fields) {
 		return nil
 	}
 	return flds.fields[index]
 }
 
+// FieldByName returns the field with the specified name (case-insensitive).
 func (flds *Fields) FieldByName(name string) *Field {
 
 	idx, ok := flds.fieldmap[strings.ToLower(name)]

@@ -23,12 +23,13 @@ type CdxNavigator struct {
 	isDescending bool          // True if this is a descending index
 }
 
-// NewCdxNavigator creates a new CDX navigator for the specified tag
+// NewCdxNavigator creates a new CDX navigator for the specified tag name.
 func NewCdxNavigator(tagName string) *CdxNavigator {
 	return &CdxNavigator{
 		tagName: tagName,
 	}
 }
+
 
 // Initialize sets up the navigator with DBF file information
 func (nav *CdxNavigator) Initialize(readseeker io.ReadSeeker, offset, size, count int, rf ReadFunc) error {
