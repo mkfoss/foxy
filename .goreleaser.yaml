@@ -1,0 +1,54 @@
+# .goreleaser.yaml
+# Documentation at https://goreleaser.com
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - mage check
+
+# Since this is a library, we don't necessarily have binaries to build.
+# However, we include a build configuration to verify that the library
+# compiles on various platforms.
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # We build the root package to ensure it compiles.
+    # GoReleaser will not produce a binary if there is no 'main' package.
+    main: .
+    skip: true # Set to true if you don't want GoReleaser to try to build a binary
+
+# Release configuration
+release:
+  github:
+    owner: mkfoss
+    name: foxy
+  # Use the standard 'v' prefix for tags (e.g., v1.0.0)
+  prerelease: auto
+
+# Changelog configuration
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - Merge pull request
+      - Merge branch
+
+# SBOM (Software Bill of Materials) generation
+sboms:
+  - artifacts: archive
+
+# Signing with Cosign (Optional, requires setup)
+# signs:
+#   - artifacts: checksum
+#     args: ["sign-blob", "--output-signature", "${signature}", "--output-certificate", "${certificate}", "${artifact}"]

@@ -24,3 +24,16 @@ func Test() error {
 func Check() {
 	mg.Deps(Lint, Test)
 }
+
+// Release creates a new release using GoReleaser
+// It requires a GITHUB_TOKEN environment variable and a git tag.
+func Release() error {
+	fmt.Println("Running GoReleaser...")
+	return sh.RunV("goreleaser", "release", "--clean")
+}
+
+// Snapshot creates a temporary release without publishing
+func Snapshot() error {
+	fmt.Println("Running GoReleaser snapshot...")
+	return sh.RunV("goreleaser", "release", "--snapshot", "--clean")
+}
