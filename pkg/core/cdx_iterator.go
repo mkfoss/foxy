@@ -83,8 +83,8 @@ func (it *CdxIterator) seekToExtreme(blockOffset int64, first bool) (int32, Seek
 
 	if isLeaf {
 		// Leaf block - extract all records and populate iterator state
-		records, err := extractCompactLeafRecords(blockBuf, int(it.tag.KeyLen), int(numKeys))
-		if err != nil || len(records) == 0 {
+		records := extractCompactLeafRecords(blockBuf, int(numKeys))
+		if len(records) == 0 {
 			return 0, SeekError
 		}
 
@@ -231,8 +231,8 @@ func (it *CdxIterator) Next() (int32, bool) {
 		return 0, false
 	}
 
-	records, err := extractCompactLeafRecords(blockBuf, int(it.tag.KeyLen), int(numKeys))
-	if err != nil || len(records) == 0 {
+	records := extractCompactLeafRecords(blockBuf, int(numKeys))
+	if len(records) == 0 {
 		it.eof = true
 		return 0, false
 	}
@@ -310,8 +310,8 @@ func (it *CdxIterator) Previous() (int32, bool) {
 		return 0, false
 	}
 
-	records, err := extractCompactLeafRecords(blockBuf, int(it.tag.KeyLen), int(numKeys))
-	if err != nil || len(records) == 0 {
+	records := extractCompactLeafRecords(blockBuf, int(numKeys))
+	if len(records) == 0 {
 		it.bof = true
 		return 0, false
 	}

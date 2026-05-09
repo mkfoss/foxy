@@ -4,7 +4,7 @@ package julian
 func YMD(d uint32) (int, int, int) {
 	l := d + 68569
 	n := 4 * l / 146097
-	l = l - (146097*n+3)/4
+	l -= (146097*n + 3) / 4
 	year := 4000 * (l + 1) / 1461001
 	l = l - 1461*year/4 + 31
 	month := 80 * l / 2447

@@ -24,7 +24,6 @@ type Dbf struct {
 	hasindex           bool
 	hasfpt             bool
 	codepage           core.Codepage
-	rec                []byte
 	fpt                io.ReadSeekCloser
 	fptFilename        string
 	fptBlockSize       uint16
@@ -252,7 +251,7 @@ func (dbf *Dbf) SetNavigator(navi Navigator) error {
 }
 
 func (dbf *Dbf) readFunc() error {
-	//assumed that reader offset is correct
+	// assumed that reader offset is correct
 	err := dbf.Record.LoadData(dbf.fl)
 	if err != nil {
 		return NewErrorf("read record data failed").SetContext("read func").SetWrapped(err)

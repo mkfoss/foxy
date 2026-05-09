@@ -1,0 +1,43 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - revive
+    - goconst
+    - gocritic
+    - misspell
+    - unparam
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+      - name: package-comments
+        disabled: true
+  errcheck:
+    check-blank: true
+    # exclude common Close/Remove functions that are often ignored in defers
+    exclude-functions:
+      - (*os.File).Close
+      - (*os.File).Remove
+      - os.RemoveAll
+      - (io.Closer).Close
+      - (*github.com/mkfoss/foxy.Dbf).Close
+      - (*github.com/mkfoss/foxy/pkg/core.CdxFile).Close
+      - (github.com/mkfoss/foxy.Opener).Close
+      - (*github.com/mkfoss/foxy/internal/mockfiler.MockFiler).Close
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

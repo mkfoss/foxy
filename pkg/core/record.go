@@ -123,7 +123,7 @@ func (rec *Record) ReadDateTime(start int) (time.Time, error) {
 	}
 	// calculate whole seconds and use the remainder as nanosecond resolution
 	nSec := mSec / 1000
-	mSec = mSec - (nSec * 1000)
+	mSec -= (nSec * 1000)
 	// create time using ymd and nanosecond timestamp
 	return time.Date(y, time.Month(m), d, 0, 0, int(nSec), int(mSec)*int(time.Millisecond), time.UTC), nil
 }
@@ -231,7 +231,7 @@ func (rec *Record) ProcessStringBytes(strbytes []byte, trim, decode, sanitize bo
 			if rec.decoder == nil {
 				rec.decoder = CodepageDecoder(rec.codepage)
 			}
-			//if decoder is still nil, means there is no valid encoder
+			// if decoder is still nil, means there is no valid encoder
 			if rec.decoder == nil {
 				return "", fmt.Errorf("unsupported codepage 0x%X", byte(rec.codepage))
 			}

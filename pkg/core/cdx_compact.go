@@ -138,9 +138,9 @@ func parseCompactLeafBlock(blockBuf []byte, keyLen int, searchKey string, numKey
 
 // extractCompactLeafRecords extracts all record numbers from a compact leaf block
 // Returns the records in order from first to last
-func extractCompactLeafRecords(blockBuf []byte, keyLen int, numKeys int) ([]int32, error) {
+func extractCompactLeafRecords(blockBuf []byte, numKeys int) []int32 {
 	if len(blockBuf) < 24 || numKeys == 0 {
-		return nil, nil
+		return nil
 	}
 
 	// Read metadata from block (B4NODE_HEADER at offset 12-23)
@@ -148,13 +148,14 @@ func extractCompactLeafRecords(blockBuf []byte, keyLen int, numKeys int) ([]int3
 	shortBytes := int(blockBuf[23])
 
 	if shortBytes == 0 || shortBytes > 6 {
-		return nil, nil
+		return nil
 	}
 
 	infoTableStart := 24
 	records := make([]int32, 0, numKeys)
 
 	// Extract record number from each entry
+loop:
 	for i := 0; i < numKeys; i++ {
 		v := i * shortBytes
 		if infoTableStart+v+shortBytes > len(blockBuf) {
@@ -174,7 +175,7 @@ func extractCompactLeafRecords(blockBuf []byte, keyLen int, numKeys int) ([]int3
 			if infoTableStart+v+4 <= len(blockBuf) {
 				rawRecNo = binary.LittleEndian.Uint32(blockBuf[infoTableStart+v:])
 			} else {
-				break
+				break loop
 			}
 		}
 
@@ -182,5 +183,5 @@ func extractCompactLeafRecords(blockBuf []byte, keyLen int, numKeys int) ([]int3
 		records = append(records, int32(recNo))
 	}
 
-	return records, nil
+	return records
 }

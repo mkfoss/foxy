@@ -64,10 +64,8 @@ func Test_ReadValue(t *testing.T) {
 							t.Fatalf("unexpected error: %s", err)
 						}
 						assert.Equal(t, int32(cval), dfld.MustValue())
-						break
 					case core.DTCharacter:
-						assert.Equal(t, cfld, strings.Trim(dfld.MustValue().(string), " ")) //because .Value() returns untrimmed, undecoded string, we trim it here
-						break
+						assert.Equal(t, cfld, strings.Trim(dfld.MustValue().(string), " ")) // because .Value() returns untrimmed, undecoded string, we trim it here
 					case core.DTNumeric, core.DTFloat, core.DTDouble, core.DTCurrency:
 						val, err := strconv.ParseFloat(cfld, 64)
 						if err != nil {
@@ -78,7 +76,6 @@ func Test_ReadValue(t *testing.T) {
 							t.Fatalf("unexpected error: %s", err)
 						}
 						assert.Equal(t, val, dval)
-						break
 					case core.DTDate:
 						val, err := time.Parse("20060102", cfld)
 						if err != nil {
