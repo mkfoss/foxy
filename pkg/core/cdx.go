@@ -9,7 +9,7 @@ import (
 // CDX constants
 const (
 	CDXBlockSize    = 512
-	CDXHeaderSize   = 512
+	CDXHeaderSize   = 1024
 	CDXSignature    = 0x01
 	CDXTagNameSize  = 11
 	CDXCompoundType = 0x7C
@@ -248,11 +248,11 @@ func readTagHeader(file io.ReadSeeker, offset int64, tagName string) (*CdxTag, e
 		return nil, fmt.Errorf("invalid tag header signature")
 	}
 
-	// Determine if descending (bit 0x40 in typeCode)
-	descending := (typeCode & 0x40) != 0
+	// Determine if descending (0 = ascending, 1 = descending at bytes 502-503)
+	descending := binary.LittleEndian.Uint16(headerBuf[502:504]) == 1
 
-	// Extract key expression (starts at offset 528, null-terminated)
-	keyExprStart := 528
+	// Extract key expression (starts at offset 512, null-terminated)
+	keyExprStart := 512
 	keyExpr := ""
 	for i := keyExprStart; i < len(headerBuf); i++ {
 		if headerBuf[i] == 0 {

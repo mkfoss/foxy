@@ -44,6 +44,8 @@ func TestCdxFindTag(t *testing.T) {
 	if tag != nil {
 		t.Logf("Found tag CATEGORYID: %s", tag.Expression)
 		assert.Equal(t, "CATEGORYID", tag.Name)
+		assert.Equal(t, "categoryid", tag.Expression)
+		assert.False(t, tag.Descending)
 	} else {
 		t.Log("CATEGORYID tag not found, checking what we have:")
 		for _, tag := range cdx.Tags {

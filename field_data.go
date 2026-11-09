@@ -133,12 +133,18 @@ func (fld *Field) AsString(trim, decode, sanitize bool) (string, error) {
 			return "F", nil
 		}
 	case core.DTMemo:
-		val, isbinary, err := fld.dbf.ReadMemo(fld.offset, fld.dbf.fptBlockSize, fld.dbf.fpt)
+		if err := fld.dbf.ensureFptLoaded(); err != nil {
+			return "", NewFieldError(fld, "could not load FPT file").SetWrapped(err).SetContext("as string")
+		}
+		val, isText, err := fld.dbf.ReadMemo(fld.offset, fld.dbf.fptBlockSize, fld.dbf.fpt)
 		if err != nil {
 			return "", NewFieldError(fld, "call to read memo failed").SetWrapped(err).SetContext("as string")
 		}
-		if isbinary {
-			return "", NewFieldError(fld, "cannot read binary memo as string").SetWrapped(err).SetContext("as string")
+		if val == nil {
+			return "", nil
+		}
+		if !isText {
+			return "", NewFieldError(fld, "cannot read binary memo as string").SetContext("as string")
 		}
 		strval, err := fld.dbf.Record.ProcessStringBytes(val, trim, decode, sanitize)
 		if err != nil {
@@ -322,4 +328,62 @@ func (fld *Field) MustAsLogical() bool {
 		panic(err)
 	}
 	return val
+}
+
+// IsEmpty reports whether the field contains a blank/uninitialized FoxPro value
+// (e.g., all spaces for Character/Date/Numeric, "00000000" for Date, ' ' or '?' for Logical, or block 0 for Memo).
+func (fld *Field) IsEmpty() (bool, error) {
+	switch fld.datatype {
+	case core.DTCharacter, core.DTNumeric, core.DTFloat:
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, true, false, false)
+		if err != nil {
+			return false, NewFieldError(fld, "call to read string failed").SetWrapped(err).SetContext("is empty")
+		}
+		return val == "", nil
+	case core.DTDate:
+		val, err := fld.dbf.Record.ReadString(fld.offset, fld.size, true, false, false)
+		if err != nil {
+			return false, NewFieldError(fld, "call to read date bytes failed").SetWrapped(err).SetContext("is empty")
+		}
+		return val == "" || val == "00000000", nil
+	case core.DTDateTime:
+		data := fld.dbf.Record.Data()
+		if fld.offset+8 > len(data) {
+			return false, NewFieldError(fld, "out of range").SetContext("is empty")
+		}
+		allZeroOrSpace := true
+		for _, b := range data[fld.offset : fld.offset+8] {
+			if b != 0 && b != ' ' {
+				allZeroOrSpace = false
+				break
+			}
+		}
+		return allZeroOrSpace, nil
+	case core.DTLogical:
+		data := fld.dbf.Record.Data()
+		if fld.offset+1 > len(data) {
+			return false, NewFieldError(fld, "out of range").SetContext("is empty")
+		}
+		b := data[fld.offset]
+		return b == ' ' || b == '?' || b == 0, nil
+	case core.DTMemo:
+		blk, err := fld.dbf.Record.ReadInteger(fld.offset)
+		if err != nil {
+			return false, NewFieldError(fld, "call to read memo block failed").SetWrapped(err).SetContext("is empty")
+		}
+		return blk == 0, nil
+	case core.DTInteger, core.DTCurrency, core.DTDouble:
+		return false, nil
+	default:
+		return false, NewFieldErrorf(fld, "unsupported data type %d", fld.datatype).SetContext("is empty")
+	}
+}
+
+// MustIsEmpty reports whether the field is empty and panics if an error occurs.
+func (fld *Field) MustIsEmpty() bool {
+	empty, err := fld.IsEmpty()
+	if err != nil {
+		panic(err)
+	}
+	return empty
 }

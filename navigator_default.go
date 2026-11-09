@@ -61,8 +61,8 @@ func (defnav *DefaulNavigator) Last() error {
 }
 
 func (defnav *DefaulNavigator) Goto(position int) error {
-	if position < 0 || position >= defnav.count {
-		return NewNavigationError().SetContext(fmt.Sprintf("goto %d", defnav.position))
+	if position < 1 || position > defnav.count {
+		return NewNavigationError().SetContext(fmt.Sprintf("goto %d", position))
 	}
 
 	pos := int64(defnav.offset + (defnav.size * (position - 1)))

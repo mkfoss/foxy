@@ -44,6 +44,11 @@ func Test_Navigation(t *testing.T) {
 	assert.NoError(t, dbf.Goto(5))
 	assert.Equal(t, []byte{0x20, 0x05, 0x00, 0x00, 0x00}, dbf.Record.Data())
 	assert.Equal(t, 5, dbf.Position())
+	assert.NoError(t, dbf.Goto(10))
+	assert.Equal(t, 10, dbf.Position())
+	assert.True(t, dbf.IsLast())
+	assert.Error(t, dbf.Goto(0))
+	assert.Error(t, dbf.Goto(11))
 
 	err := dbf.Close()
 

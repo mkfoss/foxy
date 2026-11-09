@@ -48,6 +48,21 @@ func TestField_AsString(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 	assert.Contains(t, val3, "123")
+
+	// Test memo field via AsString directly after Open (verifies lazy FPT load and text signature)
+	dbf3 := &Dbf{}
+	err = dbf3.Open(path.Join(TesrDataDir(t), "logicalmem.dbf"))
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	defer func() { _ = dbf3.Close() }()
+
+	memoFld := dbf3.Field(1)
+	memoStr, err := memoFld.AsString(true, true, false)
+	if err != nil {
+		t.Fatalf("unexpected error reading memo AsString: %s", err)
+	}
+	assert.NotEmpty(t, memoStr)
 }
 
 func TestField_AsFloat(t *testing.T) {
@@ -275,4 +290,29 @@ func TestField_MustAsLogical(t *testing.T) {
 	fld := dbf.Field(0) // logical field
 	val := fld.MustAsLogical()
 	assert.Equal(t, true, val)
+}
+
+func TestField_IsEmpty(t *testing.T) {
+	dbf := &Dbf{}
+	err := dbf.Open(path.Join(TesrDataDir(t), "dates.dbf"))
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	defer func() { _ = dbf.Close() }()
+
+	dateFld := dbf.Field(0)
+	empty, err := dateFld.IsEmpty()
+	assert.NoError(t, err)
+	assert.False(t, empty)
+	assert.False(t, dateFld.MustIsEmpty())
+
+	// Blank out the 8-byte date in record buffer and verify IsEmpty is true
+	recBytes := dbf.Record.Data()
+	for i := dateFld.Offset(); i < dateFld.Offset()+dateFld.Size(); i++ {
+		recBytes[i] = ' '
+	}
+	empty, err = dateFld.IsEmpty()
+	assert.NoError(t, err)
+	assert.True(t, empty)
+	assert.True(t, dateFld.MustIsEmpty())
 }

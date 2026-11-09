@@ -1,43 +1,53 @@
+version: "2"
 run:
-  timeout: 5m
   tests: true
-
 linters:
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    - revive
     - goconst
     - gocritic
     - misspell
+    - revive
     - unparam
-
-linters-settings:
-  revive:
+  settings:
+    errcheck:
+      check-blank: true
+      exclude-functions:
+        - (*os.File).Close
+        - (*os.File).Remove
+        - os.RemoveAll
+        - (io.Closer).Close
+        - (*github.com/mkfoss/foxy.Dbf).Close
+        - (*github.com/mkfoss/foxy/pkg/core.CdxFile).Close
+        - (github.com/mkfoss/foxy.Opener).Close
+        - (*github.com/mkfoss/foxy/internal/mockfiler.MockFiler).Close
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+    staticcheck:
+      checks:
+        - all
+        - -ST*
+        - -QF*
+  exclusions:
+    generated: lax
     rules:
-      - name: exported
-        disabled: true
-      - name: package-comments
-        disabled: true
-  errcheck:
-    check-blank: true
-    # exclude common Close/Remove functions that are often ignored in defers
-    exclude-functions:
-      - (*os.File).Close
-      - (*os.File).Remove
-      - os.RemoveAll
-      - (io.Closer).Close
-      - (*github.com/mkfoss/foxy.Dbf).Close
-      - (*github.com/mkfoss/foxy/pkg/core.CdxFile).Close
-      - (github.com/mkfoss/foxy.Opener).Close
-      - (*github.com/mkfoss/foxy/internal/mockfiler.MockFiler).Close
-
+      - linters:
+          - goconst
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
